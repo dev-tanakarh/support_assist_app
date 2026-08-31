@@ -6,8 +6,10 @@ import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import com.google.android.material.textfield.TextInputLayout;
 
@@ -23,32 +25,47 @@ public class LoginActivity extends AppCompatActivity {
         View welcome = findViewById(R.id.tv_welcome);
         View subtitle = findViewById(R.id.tv_signin_subtitle);
         View emailLabel = findViewById(R.id.tv_label_email);
-        View emailInput = findViewById(R.id.et_email);
+        final EditText emailInput = findViewById(R.id.et_email);
         View passwordLabel = findViewById(R.id.tv_label_password);
-        View passwordInput = findViewById(R.id.til_password);
+        View passwordLayout = findViewById(R.id.til_password);
+        final EditText passwordInput = findViewById(R.id.et_password);
         View forgotPassword = findViewById(R.id.tv_forgot_password);
-        View loginBtn = findViewById(R.id.btn_login);
+        Button loginBtn = findViewById(R.id.btn_login);
         View divider = findViewById(R.id.ll_divider);
         View googleBtn = findViewById(R.id.btn_google);
-        View footer = findViewById(R.id.tv_signup).getParent() instanceof LinearLayout ? (View)findViewById(R.id.tv_signup).getParent() : null;
+        View footer = findViewById(R.id.ll_footer);
 
         Animation slideUp = AnimationUtils.loadAnimation(this, R.anim.slide_up);
         
-        // Apply animations with slight delays for a cascading effect
+        // Apply animations
         logo.startAnimation(slideUp);
         welcome.startAnimation(slideUp);
         subtitle.startAnimation(slideUp);
-        
         emailLabel.startAnimation(slideUp);
         emailInput.startAnimation(slideUp);
         passwordLabel.startAnimation(slideUp);
-        passwordInput.startAnimation(slideUp);
+        passwordLayout.startAnimation(slideUp);
         forgotPassword.startAnimation(slideUp);
-        
         loginBtn.startAnimation(slideUp);
         divider.startAnimation(slideUp);
         googleBtn.startAnimation(slideUp);
         if (footer != null) footer.startAnimation(slideUp);
+
+        loginBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String email = emailInput.getText().toString();
+                String password = passwordInput.getText().toString();
+
+                // Hardcoded credentials
+                if (email.equals("admin@helpdesk.com") && password.equals("admin123")) {
+                    startActivity(new Intent(LoginActivity.this, MainActivity.class));
+                    finish();
+                } else {
+                    Toast.makeText(LoginActivity.this, "Invalid credentials! Use admin@helpdesk.com / admin123", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
 
         TextView tvSignup = findViewById(R.id.tv_signup);
         tvSignup.setOnClickListener(new View.OnClickListener() {

@@ -7,4 +7,18 @@
     <color name="input_bg">#1A222E</color>
     <color name="text_grey">#8A91A5</color>
     <color name="divider_color">#2D3643</color>
+    <color name="card_bg">#161D29</color>
+    <color name="status_open_bg">#1B3D2F</color>
+    <color name="status_open_text">#4ADE80</color>
+    <color name="status_progress_bg">#1E293B</color>
+    <color name="status_progress_text">#3B82F6</color>
+    <color name="status_resolved_bg">#1B3D2F</color>
+    <color name="status_resolved_text">#4ADE80</color>
+    <color name="priority_high_bg">#3D1B1B</color>
+    <color name="priority_high_text">#EF4444</color>
+    <color name="priority_medium_bg">#3D301B</color>
+    <color name="priority_medium_text">#F59E0B</color>
+    <color name="priority_low_bg">#1B3D2F</color>
+    <color name="priority_low_text">#10B981</color>
+    <color name="nav_inactive">#5A6475</color>
 </resources>
