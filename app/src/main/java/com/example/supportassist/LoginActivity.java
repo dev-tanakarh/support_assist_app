@@ -2,76 +2,108 @@ package com.example.supportassist;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
-import com.google.android.material.textfield.TextInputLayout;
+import java.util.HashMap;
+import java.util.Map;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class LoginActivity extends AppCompatActivity {
+
+    private static final String TAG = "LoginActivity";
+    private TokenManager tokenManager;
+    private ApiService apiService;
+    private ProgressBar progressBar;
+    private Button loginBtn;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
-        // Views to animate
-        View logo = findViewById(R.id.iv_logo);
-        View welcome = findViewById(R.id.tv_welcome);
-        View subtitle = findViewById(R.id.tv_signin_subtitle);
-        View emailLabel = findViewById(R.id.tv_label_email);
+        tokenManager = new TokenManager(this);
+        apiService = ApiClient.getApiService(this);
+        progressBar = findViewById(R.id.pb_login);
+        loginBtn = findViewById(R.id.btn_login);
+
+        if (tokenManager.getAccessToken() != null) {
+            startActivity(new Intent(LoginActivity.this, MainActivity.class));
+            finish();
+            return;
+        }
+
         final EditText emailInput = findViewById(R.id.et_email);
-        View passwordLabel = findViewById(R.id.tv_label_password);
-        View passwordLayout = findViewById(R.id.til_password);
         final EditText passwordInput = findViewById(R.id.et_password);
-        View forgotPassword = findViewById(R.id.tv_forgot_password);
-        Button loginBtn = findViewById(R.id.btn_login);
-        View divider = findViewById(R.id.ll_divider);
-        View googleBtn = findViewById(R.id.btn_google);
-        View footer = findViewById(R.id.ll_footer);
+        TextView tvSignup = findViewById(R.id.tv_signup);
 
-        Animation slideUp = AnimationUtils.loadAnimation(this, R.anim.slide_up);
-        
-        // Apply animations
-        logo.startAnimation(slideUp);
-        welcome.startAnimation(slideUp);
-        subtitle.startAnimation(slideUp);
-        emailLabel.startAnimation(slideUp);
-        emailInput.startAnimation(slideUp);
-        passwordLabel.startAnimation(slideUp);
-        passwordLayout.startAnimation(slideUp);
-        forgotPassword.startAnimation(slideUp);
-        loginBtn.startAnimation(slideUp);
-        divider.startAnimation(slideUp);
-        googleBtn.startAnimation(slideUp);
-        if (footer != null) footer.startAnimation(slideUp);
-
-        loginBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String email = emailInput.getText().toString();
-                String password = passwordInput.getText().toString();
-
-                // Hardcoded credentials
-                if (email.equals("admin@helpdesk.com") && password.equals("admin123")) {
-                    startActivity(new Intent(LoginActivity.this, MainActivity.class));
-                    finish();
-                } else {
-                    Toast.makeText(LoginActivity.this, "Invalid credentials! Use admin@helpdesk.com / admin123", Toast.LENGTH_SHORT).show();
-                }
+        loginBtn.setOnClickListener(v -> {
+            String email = emailInput.getText().toString().trim();
+            String password = passwordInput.getText().toString().trim();
+            
+            if (email.isEmpty() || password.isEmpty()) {
+                Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show();
+                return;
             }
+
+            setLoading(true);
+            loginUser(email, password);
         });
 
-        TextView tvSignup = findViewById(R.id.tv_signup);
-        tvSignup.setOnClickListener(new View.OnClickListener() {
+        tvSignup.setOnClickListener(v -> startActivity(new Intent(LoginActivity.this, SignupActivity.class)));
+    }
+
+    private void setLoading(boolean isLoading) {
+        if (progressBar != null) progressBar.setVisibility(isLoading ? View.VISIBLE : View.GONE);
+        if (loginBtn != null) loginBtn.setEnabled(!isLoading);
+    }
+
+    private void loginUser(String email, String password) {
+        Map<String, String> credentials = new HashMap<>();
+        credentials.put("email", email);
+        credentials.put("password", password);
+
+        Log.d(TAG, "Attempting login at: " + ApiClient.getBaseUrl());
+
+        apiService.login(credentials).enqueue(new Callback<ApiResponse<LoginResponse>>() {
             @Override
-            public void onClick(View v) {
-                startActivity(new Intent(LoginActivity.this, SignupActivity.class));
+            public void onResponse(Call<ApiResponse<LoginResponse>> call, Response<ApiResponse<LoginResponse>> response) {
+                setLoading(false);
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    LoginResponse data = response.body().getData();
+                    tokenManager.saveTokens(data.getAccessToken(), data.getRefreshToken());
+                    
+                    Toast.makeText(LoginActivity.this, "Login Successful!", Toast.LENGTH_SHORT).show();
+                    Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(intent);
+                    finish();
+                } else {
+                    String message = "Login Failed";
+                    if (response.body() != null && response.body().getMessage() != null) {
+                        message = response.body().getMessage();
+                    } else if (response.code() == 401) {
+                        message = "Invalid email or password";
+                    }
+                    Log.e(TAG, "Login failed: " + message + " (Code: " + response.code() + ")");
+                    Toast.makeText(LoginActivity.this, message, Toast.LENGTH_LONG).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ApiResponse<LoginResponse>> call, Throwable t) {
+                setLoading(false);
+                Log.e(TAG, "Network Error: " + t.getMessage(), t);
+                Toast.makeText(LoginActivity.this, "Connection Error: Check if backend is running on " + ApiClient.getBaseUrl(), Toast.LENGTH_LONG).show();
             }
         });
     }

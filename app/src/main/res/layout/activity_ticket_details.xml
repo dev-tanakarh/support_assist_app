@@ -181,117 +181,13 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/divider" />
 
-            <!-- Hardcoded updates for now -->
             <LinearLayout
+                android:id="@+id/ll_updates_container"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:orientation="vertical"
-                app:layout_constraintTop_toBottomOf="@+id/tv_label_updates">
-
-                <!-- Admin comment -->
-                <androidx.constraintlayout.widget.ConstraintLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    android:background="@drawable/edit_text_bg"
-                    android:padding="16dp">
-
-                    <ImageView
-                        android:id="@+id/iv_admin_avatar"
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
-                        android:src="@drawable/ic_profile"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toTopOf="parent"
-                        app:tint="@color/primary_blue" />
-
-                    <TextView
-                        android:id="@+id/tv_admin_name"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="12dp"
-                        android:text="Admin"
-                        android:textColor="@color/white"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        app:layout_constraintStart_toEndOf="@+id/iv_admin_avatar"
-                        app:layout_constraintTop_toTopOf="parent" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:text="01 Aug 2025 • 10:33 AM"
-                        android:textColor="@color/text_grey"
-                        android:textSize="10sp"
-                        app:layout_constraintBottom_toBottomOf="@+id/tv_admin_name"
-                        app:layout_constraintStart_toEndOf="@+id/tv_admin_name"
-                        app:layout_constraintTop_toTopOf="@+id/tv_admin_name" />
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="We have received your ticket and our team will look into it."
-                        android:textColor="@color/white"
-                        android:textSize="14sp"
-                        app:layout_constraintEnd_toEndOf="parent"
-                        app:layout_constraintStart_toStartOf="@+id/tv_admin_name"
-                        app:layout_constraintTop_toBottomOf="@+id/tv_admin_name" />
-                </androidx.constraintlayout.widget.ConstraintLayout>
-
-                <!-- Rodney comment -->
-                <androidx.constraintlayout.widget.ConstraintLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/edit_text_bg"
-                    android:padding="16dp">
-
-                    <ImageView
-                        android:id="@+id/iv_rodney_avatar"
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
-                        android:src="@drawable/ic_profile"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toTopOf="parent"
-                        app:tint="@color/status_progress_text" />
-
-                    <TextView
-                        android:id="@+id/tv_rodney_name"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="12dp"
-                        android:text="Rodney"
-                        android:textColor="@color/white"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        app:layout_constraintStart_toEndOf="@+id/iv_rodney_avatar"
-                        app:layout_constraintTop_toTopOf="parent" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:text="01 Aug 2025 • 10:24 AM"
-                        android:textColor="@color/text_grey"
-                        android:textSize="10sp"
-                        app:layout_constraintBottom_toBottomOf="@+id/tv_rodney_name"
-                        app:layout_constraintStart_toEndOf="@+id/tv_rodney_name"
-                        app:layout_constraintTop_toTopOf="@+id/tv_rodney_name" />
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="Thank you."
-                        android:textColor="@color/white"
-                        android:textSize="14sp"
-                        app:layout_constraintEnd_toEndOf="parent"
-                        app:layout_constraintStart_toStartOf="@+id/tv_rodney_name"
-                        app:layout_constraintTop_toBottomOf="@+id/tv_rodney_name" />
-                </androidx.constraintlayout.widget.ConstraintLayout>
-            </LinearLayout>
+                app:layout_constraintTop_toBottomOf="@+id/tv_label_updates" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.core.widget.NestedScrollView>
@@ -306,6 +202,7 @@
         app:layout_constraintBottom_toBottomOf="parent">
 
         <EditText
+            android:id="@+id/et_comment"
             android:layout_width="0dp"
             android:layout_height="48dp"
             android:layout_weight="1"
@@ -316,6 +213,7 @@
             android:textColorHint="@color/text_grey" />
 
         <ImageButton
+            android:id="@+id/btn_send_comment"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:layout_marginStart="8dp"

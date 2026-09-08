@@ -30,7 +30,7 @@
     <string name="nav_tickets">Tickets</string>
     <string name="nav_alerts">Alerts</string>
     <string name="nav_profile">Profile</string>
-    <string name="hi_rodney">Hi, Rodney 👋</string>
+    <string name="hi_placeholder">Hi, User 👋</string>
     <string name="how_can_we_help">How can we help you today?</string>
     <string name="search_hint">Search tickets, knowledge base...</string>
     <string name="network_issues">Network Issues</string>

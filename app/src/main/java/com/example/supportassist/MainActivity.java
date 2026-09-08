@@ -13,12 +13,14 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 public class MainActivity extends AppCompatActivity {
 
+    private BottomNavigationView bottomNav;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        BottomNavigationView bottomNav = findViewById(R.id.bottomNavigationView);
+        bottomNav = findViewById(R.id.bottomNavigationView);
         FloatingActionButton fab = findViewById(R.id.fab);
 
         bottomNav.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
@@ -54,6 +56,12 @@ public class MainActivity extends AppCompatActivity {
         // Default fragment
         if (savedInstanceState == null) {
             bottomNav.setSelectedItemId(R.id.nav_home);
+        }
+    }
+
+    public void navigateToTickets() {
+        if (bottomNav != null) {
+            bottomNav.setSelectedItemId(R.id.nav_tickets);
         }
     }
 

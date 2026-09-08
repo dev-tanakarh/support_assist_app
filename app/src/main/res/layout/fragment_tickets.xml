@@ -44,6 +44,7 @@
             android:orientation="horizontal">
 
             <TextView
+                android:id="@+id/tv_filter_all"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:background="@color/primary_blue"
@@ -54,6 +55,7 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/tv_filter_open"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
@@ -63,6 +65,7 @@
                 android:textColor="@color/text_grey" />
 
             <TextView
+                android:id="@+id/tv_filter_progress"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
@@ -72,6 +75,7 @@
                 android:textColor="@color/text_grey" />
 
             <TextView
+                android:id="@+id/tv_filter_closed"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"

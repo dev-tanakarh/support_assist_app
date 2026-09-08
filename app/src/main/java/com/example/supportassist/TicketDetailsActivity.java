@@ -1,18 +1,48 @@
 package com.example.supportassist;
 
 import android.os.Bundle;
+import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class TicketDetailsActivity extends AppCompatActivity {
+
+    private TextView tvId, tvSubject, tvStatus, tvPriority, tvDescription, tvDate;
+    private LinearLayout llUpdatesContainer;
+    private EditText etComment;
+    private ImageButton btnSendComment;
+    private ApiService apiService;
+    private String ticketId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_ticket_details);
+
+        apiService = ApiClient.getApiService(this);
+
+        tvId = findViewById(R.id.tv_ticket_id);
+        tvSubject = findViewById(R.id.tv_subject);
+        tvStatus = findViewById(R.id.tv_status_tag);
+        tvPriority = findViewById(R.id.tv_priority_tag);
+        tvDescription = findViewById(R.id.tv_description);
+        tvDate = findViewById(R.id.tv_submitted_date);
+        llUpdatesContainer = findViewById(R.id.ll_updates_container);
+        etComment = findViewById(R.id.et_comment);
+        btnSendComment = findViewById(R.id.btn_send_comment);
 
         ImageButton btnBack = findViewById(R.id.btn_back);
         btnBack.setOnClickListener(new View.OnClickListener() {
@@ -22,50 +52,122 @@ public class TicketDetailsActivity extends AppCompatActivity {
             }
         });
 
-        // Get data from intent (mocking for now since we use hardcoded data)
-        String id = getIntent().getStringExtra("ticket_id");
-        String subject = getIntent().getStringExtra("subject");
-        String status = getIntent().getStringExtra("status");
-        String priority = getIntent().getStringExtra("priority");
+        ticketId = getIntent().getStringExtra("ticket_id");
+        if (ticketId != null) {
+            fetchTicketDetails(ticketId);
+        } else {
+            Toast.makeText(this, "Error: Ticket ID not found", Toast.LENGTH_SHORT).show();
+            finish();
+        }
 
-        TextView tvId = findViewById(R.id.tv_ticket_id);
-        TextView tvSubject = findViewById(R.id.tv_subject);
-        TextView tvStatus = findViewById(R.id.tv_status_tag);
-        TextView tvPriority = findViewById(R.id.tv_priority_tag);
-        TextView tvDescription = findViewById(R.id.tv_description);
-        TextView tvDate = findViewById(R.id.tv_submitted_date);
+        btnSendComment.setOnClickListener(v -> submitReview());
+    }
 
-        if (id != null) tvId.setText(id);
-        if (subject != null) tvSubject.setText(subject);
+    private void fetchTicketDetails(String id) {
+        apiService.getTicketDetails(id).enqueue(new Callback<ApiResponse<Ticket>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<Ticket>> call, Response<ApiResponse<Ticket>> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    updateUI(response.body().getData());
+                } else {
+                    Toast.makeText(TicketDetailsActivity.this, "Failed to load ticket details", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ApiResponse<Ticket>> call, Throwable t) {
+                Log.e("TicketDetails", "Error: " + t.getMessage());
+                Toast.makeText(TicketDetailsActivity.this, "Network Error", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void updateUI(Ticket ticket) {
+        if (ticket == null) return;
+
+        tvId.setText(ticket.getId());
+        tvSubject.setText(ticket.getSubject());
+        tvDescription.setText(ticket.getDescription());
+        tvDate.setText(ticket.getTimeAgo());
+
+        String status = ticket.getStatus();
+        tvStatus.setText(status);
         if (status != null) {
-            tvStatus.setText(status);
-            if (status.equalsIgnoreCase("Open")) {
-                tvStatus.setBackgroundResource(R.color.status_open_bg);
+            if (status.equalsIgnoreCase("OPEN")) {
+                tvStatus.setBackgroundResource(R.drawable.status_open_bg);
                 tvStatus.setTextColor(ContextCompat.getColor(this, R.color.status_open_text));
-            } else if (status.equalsIgnoreCase("In Progress")) {
-                tvStatus.setBackgroundResource(R.color.status_progress_bg);
+            } else if (status.equalsIgnoreCase("IN_PROGRESS")) {
+                tvStatus.setBackgroundResource(R.drawable.status_progress_bg);
                 tvStatus.setTextColor(ContextCompat.getColor(this, R.color.status_progress_text));
-            } else if (status.equalsIgnoreCase("Resolved")) {
-                tvStatus.setBackgroundResource(R.color.status_resolved_bg);
+            } else if (status.equalsIgnoreCase("RESOLVED")) {
+                tvStatus.setBackgroundResource(R.drawable.status_resolved_bg);
                 tvStatus.setTextColor(ContextCompat.getColor(this, R.color.status_resolved_text));
+            } else {
+                tvStatus.setBackgroundResource(R.drawable.status_closed_bg);
+                tvStatus.setTextColor(ContextCompat.getColor(this, R.color.white));
             }
         }
+
+        String priority = ticket.getPriority();
+        tvPriority.setText(priority);
         if (priority != null) {
-            tvPriority.setText(priority);
-            if (priority.equalsIgnoreCase("High")) {
-                tvPriority.setBackgroundResource(R.color.priority_high_bg);
+            if (priority.equalsIgnoreCase("HIGH")) {
+                tvPriority.setBackgroundResource(R.drawable.priority_high_bg);
                 tvPriority.setTextColor(ContextCompat.getColor(this, R.color.priority_high_text));
-            } else if (priority.equalsIgnoreCase("Medium")) {
-                tvPriority.setBackgroundResource(R.color.priority_medium_bg);
+            } else if (priority.equalsIgnoreCase("MEDIUM")) {
+                tvPriority.setBackgroundResource(R.drawable.priority_medium_bg);
                 tvPriority.setTextColor(ContextCompat.getColor(this, R.color.priority_medium_text));
-            } else if (priority.equalsIgnoreCase("Low")) {
-                tvPriority.setBackgroundResource(R.color.priority_low_bg);
+            } else if (priority.equalsIgnoreCase("LOW")) {
+                tvPriority.setBackgroundResource(R.drawable.priority_low_bg);
                 tvPriority.setTextColor(ContextCompat.getColor(this, R.color.priority_low_text));
             }
         }
 
-        // Hardcoded details
-        tvDescription.setText("The WiFi in my room keeps disconnecting every few minutes. I have tried restarting my device but the issue persists. Please assist as I have an important meeting soon.");
-        tvDate.setText("01 Aug 2025 • 10:15 AM");
+        // Handle Status History / Updates
+        llUpdatesContainer.removeAllViews();
+        List<Ticket.StatusHistory> history = ticket.getStatusHistory();
+        if (history != null && !history.isEmpty()) {
+            LayoutInflater inflater = LayoutInflater.from(this);
+            for (Ticket.StatusHistory item : history) {
+                View updateView = inflater.inflate(R.layout.item_update, llUpdatesContainer, false);
+                
+                TextView tvAdminName = updateView.findViewById(R.id.tv_admin_name);
+                TextView tvUpdateTime = updateView.findViewById(R.id.tv_update_time);
+                TextView tvUpdateNote = updateView.findViewById(R.id.tv_update_note);
+                
+                tvAdminName.setText("System Update: " + item.getStatus());
+                tvUpdateTime.setText(item.getCreatedAt());
+                tvUpdateNote.setText(item.getNote() != null ? item.getNote() : "No note provided.");
+                
+                llUpdatesContainer.addView(updateView);
+            }
+        }
+    }
+
+    private void submitReview() {
+        String comment = etComment.getText().toString();
+        if (comment.isEmpty()) return;
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("rating", 5); // Default rating
+        body.put("comment", comment);
+
+        apiService.submitReview(ticketId, body).enqueue(new Callback<ApiResponse<Map<String, Object>>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<Map<String, Object>>> call, Response<ApiResponse<Map<String, Object>>> response) {
+                if (response.isSuccessful()) {
+                    etComment.setText("");
+                    fetchTicketDetails(ticketId); // Refresh
+                    Toast.makeText(TicketDetailsActivity.this, "Comment added!", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(TicketDetailsActivity.this, "Could not add comment", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ApiResponse<Map<String, Object>>> call, Throwable t) {
+                Toast.makeText(TicketDetailsActivity.this, "Network Error", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 }

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="16dp"
+    android:background="@drawable/edit_text_bg"
+    android:padding="16dp">
+
+    <ImageView
+        android:id="@+id/iv_admin_avatar"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:src="@drawable/ic_profile"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="@color/primary_blue" />
+
+    <TextView
+        android:id="@+id/tv_admin_name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:textColor="@color/white"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        app:layout_constraintStart_toEndOf="@+id/iv_admin_avatar"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="System Update: IN_PROGRESS" />
+
+    <TextView
+        android:id="@+id/tv_update_time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:textColor="@color/text_grey"
+        android:textSize="10sp"
+        app:layout_constraintBottom_toBottomOf="@+id/tv_admin_name"
+        app:layout_constraintStart_toEndOf="@+id/tv_admin_name"
+        app:layout_constraintTop_toTopOf="@+id/tv_admin_name"
+        tools:text="2026-09-07T14:05:00Z" />
+
+    <TextView
+        android:id="@+id/tv_update_note"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:textColor="@color/white"
+        android:textSize="14sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="@+id/tv_admin_name"
+        app:layout_constraintTop_toBottomOf="@+id/tv_admin_name"
+        tools:text="Replaced the faulty RAM module." />
+</androidx.constraintlayout.widget.ConstraintLayout>

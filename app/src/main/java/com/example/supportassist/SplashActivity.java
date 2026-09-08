@@ -43,11 +43,20 @@ public class SplashActivity extends AppCompatActivity {
         animator.addListener(new android.animation.AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(android.animation.Animator animation) {
-                startActivity(new Intent(SplashActivity.this, LoginActivity.class));
-                finish();
+                checkLoginStatus();
             }
         });
 
         animator.start();
+    }
+
+    private void checkLoginStatus() {
+        TokenManager tokenManager = new TokenManager(this);
+        if (tokenManager.getAccessToken() != null) {
+            startActivity(new Intent(SplashActivity.this, MainActivity.class));
+        } else {
+            startActivity(new Intent(SplashActivity.this, LoginActivity.class));
+        }
+        finish();
     }
 }

@@ -1,5 +1,7 @@
 package com.example.supportassist;
 
+import android.content.res.ColorStateList;
+import android.graphics.Typeface;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,9 +14,18 @@ import java.util.List;
 public class AlertAdapter extends RecyclerView.Adapter<AlertAdapter.AlertViewHolder> {
 
     private List<Alert> alerts;
+    private OnAlertClickListener listener;
+
+    public interface OnAlertClickListener {
+        void onAlertClick(Alert alert, int position);
+    }
 
     public AlertAdapter(List<Alert> alerts) {
         this.alerts = alerts;
+    }
+
+    public void setOnAlertClickListener(OnAlertClickListener listener) {
+        this.listener = listener;
     }
 
     @NonNull
@@ -30,7 +41,24 @@ public class AlertAdapter extends RecyclerView.Adapter<AlertAdapter.AlertViewHol
         holder.tvTitle.setText(alert.getTitle());
         holder.tvTime.setText(alert.getTime());
         holder.ivIcon.setImageResource(alert.getIconRes());
-        holder.ivIcon.setColorFilter(alert.getIconBgColor());
+        
+        // Use the background view for the color circle as defined in item_alert.xml
+        holder.vIconBg.setBackgroundTintList(ColorStateList.valueOf(alert.getIconBgColor()));
+
+        // Visual distinction for read/unread alerts
+        if (alert.isRead()) {
+            holder.tvTitle.setAlpha(0.6f);
+            holder.tvTitle.setTypeface(null, Typeface.NORMAL);
+        } else {
+            holder.tvTitle.setAlpha(1.0f);
+            holder.tvTitle.setTypeface(null, Typeface.BOLD);
+        }
+
+        holder.itemView.setOnClickListener(v -> {
+            if (listener != null) {
+                listener.onAlertClick(alert, position);
+            }
+        });
     }
 
     @Override
