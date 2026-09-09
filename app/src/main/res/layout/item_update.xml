@@ -6,6 +6,7 @@
     android:layout_height="wrap_content"
     android:layout_marginBottom="16dp"
     android:background="@drawable/edit_text_bg"
+    android:backgroundTint="@color/card_bg"
     android:padding="16dp">
 
     <ImageView
@@ -22,7 +23,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
-        android:textColor="@color/white"
+        android:textColor="@color/text_main"
         android:textSize="14sp"
         android:textStyle="bold"
         app:layout_constraintStart_toEndOf="@+id/iv_admin_avatar"
@@ -46,7 +47,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:textColor="@color/white"
+        android:textColor="@color/text_main"
         android:textSize="14sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="@+id/tv_admin_name"

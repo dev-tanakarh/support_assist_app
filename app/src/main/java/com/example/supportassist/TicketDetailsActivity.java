@@ -20,11 +20,12 @@ import retrofit2.Response;
 
 public class TicketDetailsActivity extends AppCompatActivity {
 
-    private TextView tvId, tvSubject, tvStatus, tvPriority, tvDescription, tvDate;
+    private TextView tvId, tvSubject, tvStatus, tvPriority, tvDescription, tvDate, tvTechnician;
     private LinearLayout llUpdatesContainer;
     private EditText etComment;
     private ImageButton btnSendComment;
     private ApiService apiService;
+    private DataRepository repository;
     private String ticketId;
 
     @Override
@@ -33,6 +34,7 @@ public class TicketDetailsActivity extends AppCompatActivity {
         setContentView(R.layout.activity_ticket_details);
 
         apiService = ApiClient.getApiService(this);
+        repository = DataRepository.getInstance(this);
 
         tvId = findViewById(R.id.tv_ticket_id);
         tvSubject = findViewById(R.id.tv_subject);
@@ -40,20 +42,20 @@ public class TicketDetailsActivity extends AppCompatActivity {
         tvPriority = findViewById(R.id.tv_priority_tag);
         tvDescription = findViewById(R.id.tv_description);
         tvDate = findViewById(R.id.tv_submitted_date);
+        tvTechnician = findViewById(R.id.tv_assigned_technician);
         llUpdatesContainer = findViewById(R.id.ll_updates_container);
         etComment = findViewById(R.id.et_comment);
         btnSendComment = findViewById(R.id.btn_send_comment);
 
-        ImageButton btnBack = findViewById(R.id.btn_back);
-        btnBack.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                finish();
-            }
-        });
+        findViewById(R.id.btn_back).setOnClickListener(v -> finish());
 
         ticketId = getIntent().getStringExtra("ticket_id");
         if (ticketId != null) {
+            // Cache details for instant loading if available
+            Ticket cached = repository.getCachedTicketDetail(ticketId);
+            if (cached != null) {
+                updateUI(cached);
+            }
             fetchTicketDetails(ticketId);
         } else {
             Toast.makeText(this, "Error: Ticket ID not found", Toast.LENGTH_SHORT).show();
@@ -68,16 +70,16 @@ public class TicketDetailsActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call<ApiResponse<Ticket>> call, Response<ApiResponse<Ticket>> response) {
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
-                    updateUI(response.body().getData());
-                } else {
-                    Toast.makeText(TicketDetailsActivity.this, "Failed to load ticket details", Toast.LENGTH_SHORT).show();
+                    Ticket ticket = response.body().getData();
+                    // Update cache with the fresh details
+                    repository.cacheTicketDetail(ticket);
+                    updateUI(ticket);
                 }
             }
 
             @Override
             public void onFailure(Call<ApiResponse<Ticket>> call, Throwable t) {
                 Log.e("TicketDetails", "Error: " + t.getMessage());
-                Toast.makeText(TicketDetailsActivity.this, "Network Error", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -89,6 +91,13 @@ public class TicketDetailsActivity extends AppCompatActivity {
         tvSubject.setText(ticket.getSubject());
         tvDescription.setText(ticket.getDescription());
         tvDate.setText(ticket.getTimeAgo());
+
+        // Display Assigned Technician
+        if (ticket.getAssignedTechnician() != null && ticket.getAssignedTechnician().getName() != null) {
+            tvTechnician.setText(ticket.getAssignedTechnician().getName());
+        } else {
+            tvTechnician.setText(R.string.not_yet_assigned);
+        }
 
         String status = ticket.getStatus();
         tvStatus.setText(status);
@@ -149,7 +158,7 @@ public class TicketDetailsActivity extends AppCompatActivity {
         if (comment.isEmpty()) return;
 
         Map<String, Object> body = new HashMap<>();
-        body.put("rating", 5); // Default rating
+        body.put("rating", 5); 
         body.put("comment", comment);
 
         apiService.submitReview(ticketId, body).enqueue(new Callback<ApiResponse<Map<String, Object>>>() {
@@ -157,10 +166,7 @@ public class TicketDetailsActivity extends AppCompatActivity {
             public void onResponse(Call<ApiResponse<Map<String, Object>>> call, Response<ApiResponse<Map<String, Object>>> response) {
                 if (response.isSuccessful()) {
                     etComment.setText("");
-                    fetchTicketDetails(ticketId); // Refresh
-                    Toast.makeText(TicketDetailsActivity.this, "Comment added!", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(TicketDetailsActivity.this, "Could not add comment", Toast.LENGTH_SHORT).show();
+                    fetchTicketDetails(ticketId); // Refresh details
                 }
             }
 

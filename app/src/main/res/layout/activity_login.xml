@@ -32,7 +32,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
                 android:text="@string/welcome_back"
-                android:textColor="@color/white"
+                android:textColor="@color/text_main"
                 android:textSize="24sp"
                 android:textStyle="bold"
                 app:layout_constraintEnd_toEndOf="parent"
@@ -57,7 +57,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="32dp"
                 android:text="@string/email_or_username"
-                android:textColor="@color/white"
+                android:textColor="@color/text_main"
                 android:textSize="14sp"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/tv_signin_subtitle" />
@@ -72,7 +72,7 @@
                 android:importantForAutofill="no"
                 android:inputType="textEmailAddress"
                 android:paddingHorizontal="16dp"
-                android:textColor="@color/white"
+                android:textColor="@color/text_main"
                 android:textColorHint="@color/text_grey"
                 app:layout_constraintTop_toBottomOf="@+id/tv_label_email" />
 
@@ -82,7 +82,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:text="@string/password"
-                android:textColor="@color/white"
+                android:textColor="@color/text_main"
                 android:textSize="14sp"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/et_email" />
@@ -106,7 +106,7 @@
                     android:importantForAutofill="no"
                     android:inputType="textPassword"
                     android:paddingHorizontal="16dp"
-                    android:textColor="@color/white"
+                    android:textColor="@color/text_main"
                     android:textColorHint="@color/text_grey" />
             </com.google.android.material.textfield.TextInputLayout>
 
@@ -173,9 +173,9 @@
                 android:layout_marginTop="24dp"
                 android:text="@string/continue_with_google"
                 android:textAllCaps="false"
-                android:textColor="@color/white"
+                android:textColor="@color/text_main"
                 app:cornerRadius="12dp"
-                app:icon="@android:drawable/ic_dialog_info"
+                app:icon="@drawable/ic_google"
                 app:iconGravity="textStart"
                 app:iconTint="@null"
                 app:layout_constraintTop_toBottomOf="@+id/ll_divider"

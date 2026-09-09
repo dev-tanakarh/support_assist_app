@@ -12,7 +12,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
         android:text="@string/notifications"
-        android:textColor="@color/white"
+        android:textColor="@color/text_main"
         android:textSize="20sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
@@ -28,7 +28,7 @@
         app:layout_constraintBottom_toBottomOf="@+id/tv_alerts_title"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="@+id/tv_alerts_title"
-        app:tint="@color/white" />
+        app:tint="@color/text_main" />
 
     <TextView
         android:id="@+id/tv_mark_read"

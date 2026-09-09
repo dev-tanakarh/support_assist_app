@@ -12,10 +12,9 @@ import retrofit2.converter.gson.GsonConverterFactory;
 import java.io.IOException;
 
 public class ApiClient {
-    // IMPORTANT: Ensure this matches your laptop's IP address on the WiFi network.
-    // Check it using 'ipconfig' (Windows) or 'ifconfig' (Mac/Linux).
+    // IMPORTANT: Ensure this matches your laptop's IP address or ngrok URL.
     // The trailing slash is mandatory for Retrofit.
-    private static final String BASE_URL = "https://goldsmith-kilometer-cabbie.ngrok-free.dev/api/";
+    private static final String BASE_URL = "http://192.168.18.7:8080/api/";
     private static Retrofit retrofit = null;
 
     public static String getBaseUrl() {
@@ -44,10 +43,7 @@ public class ApiClient {
                                     .header("Accept", "application/json");
 
                             if (token != null && !token.isEmpty()) {
-                                Log.d("ApiClient", "Adding Auth Token to request: " + original.url());
                                 requestBuilder.header("Authorization", "Bearer " + token);
-                            } else {
-                                Log.d("ApiClient", "No Auth Token found for request: " + original.url());
                             }
 
                             return chain.proceed(requestBuilder.build());

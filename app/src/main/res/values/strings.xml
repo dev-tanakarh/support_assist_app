@@ -77,6 +77,8 @@
     <string name="status">Status</string>
     <string name="updates">Updates</string>
     <string name="add_a_comment">Add a comment...</string>
+    <string name="assigned_technician">Assigned Technician</string>
+    <string name="not_yet_assigned">Not yet assigned</string>
 
     <!-- Notifications -->
     <string name="notifications">Notifications</string>

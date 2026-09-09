@@ -20,14 +20,14 @@
             android:src="@android:drawable/ic_menu_revert"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:tint="@color/white" />
+            app:tint="@color/text_main" />
 
         <TextView
             android:id="@+id/tv_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/create_new_ticket"
-            android:textColor="@color/white"
+            android:textColor="@color/text_main"
             android:textSize="20sp"
             android:textStyle="bold"
             app:layout_constraintBottom_toBottomOf="@+id/btn_back"
@@ -52,6 +52,7 @@
             android:layout_height="56dp"
             android:layout_marginTop="8dp"
             android:background="@drawable/edit_text_bg"
+            android:backgroundTint="@color/card_bg"
             app:layout_constraintTop_toBottomOf="@+id/tv_label_category" />
 
         <TextView
@@ -71,11 +72,12 @@
             android:layout_height="56dp"
             android:layout_marginTop="8dp"
             android:background="@drawable/edit_text_bg"
+            android:backgroundTint="@color/card_bg"
             android:hint="@string/subject_hint"
             android:importantForAutofill="no"
             android:inputType="text"
             android:paddingHorizontal="16dp"
-            android:textColor="@color/white"
+            android:textColor="@color/text_main"
             android:textColorHint="@color/text_grey"
             app:layout_constraintTop_toBottomOf="@+id/tv_label_subject" />
 
@@ -96,13 +98,14 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:background="@drawable/edit_text_bg"
+            android:backgroundTint="@color/card_bg"
             android:gravity="top"
             android:hint="@string/description_hint"
             android:importantForAutofill="no"
             android:inputType="textMultiLine"
             android:minHeight="120dp"
             android:padding="16dp"
-            android:textColor="@color/white"
+            android:textColor="@color/text_main"
             android:textColorHint="@color/text_grey"
             app:layout_constraintTop_toBottomOf="@+id/tv_label_description" />
 
@@ -123,11 +126,12 @@
             android:layout_height="56dp"
             android:layout_marginTop="8dp"
             android:background="@drawable/edit_text_bg"
+            android:backgroundTint="@color/card_bg"
             android:hint="@string/department_hint"
             android:importantForAutofill="no"
             android:inputType="text"
             android:paddingHorizontal="16dp"
-            android:textColor="@color/white"
+            android:textColor="@color/text_main"
             android:textColorHint="@color/text_grey"
             app:layout_constraintTop_toBottomOf="@+id/tv_label_department" />
 
@@ -148,11 +152,12 @@
             android:layout_height="56dp"
             android:layout_marginTop="8dp"
             android:background="@drawable/edit_text_bg"
+            android:backgroundTint="@color/card_bg"
             android:hint="@string/room_hint"
             android:importantForAutofill="no"
             android:inputType="text"
             android:paddingHorizontal="16dp"
-            android:textColor="@color/white"
+            android:textColor="@color/text_main"
             android:textColorHint="@color/text_grey"
             app:layout_constraintTop_toBottomOf="@+id/tv_label_room" />
 
@@ -173,11 +178,12 @@
             android:layout_height="56dp"
             android:layout_marginTop="8dp"
             android:background="@drawable/edit_text_bg"
+            android:backgroundTint="@color/card_bg"
             android:hint="@string/device_hint"
             android:importantForAutofill="no"
             android:inputType="text"
             android:paddingHorizontal="16dp"
-            android:textColor="@color/white"
+            android:textColor="@color/text_main"
             android:textColorHint="@color/text_grey"
             app:layout_constraintTop_toBottomOf="@+id/tv_label_device" />
 
@@ -208,8 +214,9 @@
                 android:background="@drawable/edit_text_bg"
                 android:gravity="center"
                 android:text="@string/low"
-                android:textColor="@color/priority_low_text"
-                android:drawableStart="@android:drawable/presence_online"
+                android:textColor="@color/text_grey"
+                android:clickable="true"
+                android:focusable="true"
                 android:paddingStart="8dp" />
 
             <TextView
@@ -221,8 +228,9 @@
                 android:background="@drawable/edit_text_bg"
                 android:gravity="center"
                 android:text="@string/medium"
-                android:textColor="@color/priority_medium_text"
-                android:drawableStart="@android:drawable/presence_away"
+                android:textColor="@color/text_grey"
+                android:clickable="true"
+                android:focusable="true"
                 android:paddingStart="8dp" />
 
             <TextView
@@ -233,8 +241,9 @@
                 android:background="@drawable/edit_text_bg"
                 android:gravity="center"
                 android:text="@string/high"
-                android:textColor="@color/priority_high_text"
-                android:drawableStart="@android:drawable/presence_busy"
+                android:textColor="@color/text_grey"
+                android:clickable="true"
+                android:focusable="true"
                 android:paddingStart="8dp" />
         </LinearLayout>
 
@@ -254,6 +263,7 @@
             android:layout_height="56dp"
             android:layout_marginTop="8dp"
             android:background="@drawable/edit_text_bg"
+            android:backgroundTint="@color/card_bg"
             android:gravity="center"
             android:orientation="horizontal"
             app:layout_constraintTop_toBottomOf="@+id/tv_label_attachments">

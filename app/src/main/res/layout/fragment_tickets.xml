@@ -3,40 +3,42 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg_color"
-    android:paddingHorizontal="24dp">
-
-    <TextView
-        android:id="@+id/tv_tickets_title"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:text="@string/my_tickets"
-        android:textColor="@color/white"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+    android:background="@color/bg_color">
 
     <ImageButton
         android:id="@+id/btn_back"
         android:layout_width="48dp"
         android:layout_height="48dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:src="@android:drawable/ic_menu_revert"
-        app:layout_constraintBottom_toBottomOf="@+id/tv_tickets_title"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/tv_tickets_title"
-        app:tint="@color/white" />
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="@color/text_main" />
+
+    <TextView
+        android:id="@+id/tv_tickets_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/my_tickets"
+        android:textColor="@color/text_main"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toBottomOf="@+id/btn_back"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/btn_back" />
 
     <HorizontalScrollView
         android:id="@+id/hsv_filters"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
+        android:layout_marginTop="16dp"
+        android:clipToPadding="false"
+        android:paddingHorizontal="24dp"
         android:scrollbars="none"
-        app:layout_constraintTop_toBottomOf="@+id/tv_tickets_title">
+        app:layout_constraintTop_toBottomOf="@+id/btn_back">
 
         <LinearLayout
             android:layout_width="wrap_content"
@@ -58,7 +60,7 @@
                 android:id="@+id/tv_filter_open"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="12dp"
                 android:paddingHorizontal="20dp"
                 android:paddingVertical="8dp"
                 android:text="@string/open"
@@ -68,7 +70,7 @@
                 android:id="@+id/tv_filter_progress"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="12dp"
                 android:paddingHorizontal="20dp"
                 android:paddingVertical="8dp"
                 android:text="@string/in_progress"
@@ -78,7 +80,7 @@
                 android:id="@+id/tv_filter_closed"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="12dp"
                 android:paddingHorizontal="20dp"
                 android:paddingVertical="8dp"
                 android:text="@string/closed"
@@ -90,7 +92,10 @@
         android:id="@+id/rv_tickets"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="24dp"
+        android:layout_marginTop="16dp"
+        android:paddingHorizontal="24dp"
+        android:paddingBottom="100dp"
+        android:clipToPadding="false"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/hsv_filters" />
 

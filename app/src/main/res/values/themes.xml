@@ -1,8 +1,21 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
     <style name="Base.Theme.SupportAssist" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <item name="colorPrimary">@color/primary_blue</item>
+        <item name="android:windowBackground">@color/bg_color</item>
+
+        <!-- Text Colors -->
+        <item name="android:textColorPrimary">@color/text_main</item>
+        <item name="android:textColorSecondary">@color/text_grey</item>
+        <item name="android:editTextColor">@color/text_main</item>
+        <item name="android:textColorHint">@color/text_grey</item>
+
+        <!-- Material 3 roles -->
+        <item name="colorOnBackground">@color/text_main</item>
+        <item name="colorOnSurface">@color/text_main</item>
+        <item name="colorOnSurfaceVariant">@color/text_grey</item>
+        <item name="colorSurface">@color/bg_color</item>
+        <item name="colorOutline">@color/divider_color</item>
     </style>
 
     <style name="Theme.SupportAssist" parent="Base.Theme.SupportAssist" />

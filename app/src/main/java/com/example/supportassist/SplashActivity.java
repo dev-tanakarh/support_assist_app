@@ -23,23 +23,18 @@ public class SplashActivity extends AppCompatActivity {
         TextView subtitle = findViewById(R.id.tv_subtitle);
         ProgressBar progressBar = findViewById(R.id.progress_bar);
 
-        // Fade-in animations for text and logo
+        // Pre-fetch categories in background to avoid long loading times in form
+        DataRepository.getInstance(this).syncCategories();
+
         Animation fadeIn = AnimationUtils.loadAnimation(this, R.anim.fade_in);
         logo.startAnimation(fadeIn);
         title.startAnimation(fadeIn);
         subtitle.startAnimation(fadeIn);
 
-        // Animate progress bar from 0 to 100
         ValueAnimator animator = ValueAnimator.ofInt(0, 100);
-        animator.setDuration(3000); // 3 seconds
-        animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-            @Override
-            public void onAnimationUpdate(ValueAnimator animation) {
-                progressBar.setProgress((int) animation.getAnimatedValue());
-            }
-        });
+        animator.setDuration(2000); // Faster splash
+        animator.addUpdateListener(animation -> progressBar.setProgress((int) animation.getAnimatedValue()));
         
-        // Navigate when animation finishes
         animator.addListener(new android.animation.AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(android.animation.Animator animation) {

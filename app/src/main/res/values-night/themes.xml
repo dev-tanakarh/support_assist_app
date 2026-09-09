@@ -1,7 +1,21 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
+    <!-- Base application theme for Dark Mode. -->
     <style name="Base.Theme.SupportAssist" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your dark theme here. -->
-        <!-- <item name="colorPrimary">@color/my_dark_primary</item> -->
+        <item name="colorPrimary">@color/primary_blue</item>
+        <item name="android:windowBackground">@color/bg_color</item>
+
+        <!-- Global Text Visibility Fixes (Forces white text on dark background) -->
+        <item name="android:textColor">@color/text_main</item>
+        <item name="android:textColorPrimary">@color/text_main</item>
+        <item name="android:textColorSecondary">@color/text_grey</item>
+        <item name="android:editTextColor">@color/text_main</item>
+        <item name="android:textColorHint">@color/text_grey</item>
+
+        <!-- Material 3 specific text attributes -->
+        <item name="colorOnBackground">@color/text_main</item>
+        <item name="colorOnSurface">@color/text_main</item>
+        <item name="colorOnSurfaceVariant">@color/text_grey</item>
+        <item name="colorOutline">@color/divider_color</item>
+        <item name="colorSurface">@color/bg_color</item>
     </style>
 </resources>

@@ -24,7 +24,7 @@
                 android:src="@android:drawable/ic_menu_revert"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:tint="@color/white" />
+                app:tint="@color/text_main" />
 
             <TextView
                 android:id="@+id/tv_create_account"
@@ -32,7 +32,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:text="@string/create_account"
-                android:textColor="@color/white"
+                android:textColor="@color/text_main"
                 android:textSize="24sp"
                 android:textStyle="bold"
                 app:layout_constraintEnd_toEndOf="parent"
@@ -57,7 +57,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="32dp"
                 android:text="@string/full_name"
-                android:textColor="@color/white"
+                android:textColor="@color/text_main"
                 android:textSize="14sp"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/tv_join_subtitle" />
@@ -72,7 +72,7 @@
                 android:importantForAutofill="no"
                 android:inputType="textPersonName"
                 android:paddingHorizontal="16dp"
-                android:textColor="@color/white"
+                android:textColor="@color/text_main"
                 android:textColorHint="@color/text_grey"
                 app:layout_constraintTop_toBottomOf="@+id/tv_label_name" />
 
@@ -82,7 +82,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:text="@string/email"
-                android:textColor="@color/white"
+                android:textColor="@color/text_main"
                 android:textSize="14sp"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/et_name" />
@@ -97,7 +97,7 @@
                 android:importantForAutofill="no"
                 android:inputType="textEmailAddress"
                 android:paddingHorizontal="16dp"
-                android:textColor="@color/white"
+                android:textColor="@color/text_main"
                 android:textColorHint="@color/text_grey"
                 app:layout_constraintTop_toBottomOf="@+id/tv_label_email" />
 
@@ -107,7 +107,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:text="@string/phone_number"
-                android:textColor="@color/white"
+                android:textColor="@color/text_main"
                 android:textSize="14sp"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/et_email_signup" />
@@ -122,7 +122,7 @@
                 android:importantForAutofill="no"
                 android:inputType="phone"
                 android:paddingHorizontal="16dp"
-                android:textColor="@color/white"
+                android:textColor="@color/text_main"
                 android:textColorHint="@color/text_grey"
                 app:layout_constraintTop_toBottomOf="@+id/tv_label_phone" />
 
@@ -132,7 +132,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:text="@string/password"
-                android:textColor="@color/white"
+                android:textColor="@color/text_main"
                 android:textSize="14sp"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/et_phone" />
@@ -156,7 +156,7 @@
                     android:importantForAutofill="no"
                     android:inputType="textPassword"
                     android:paddingHorizontal="16dp"
-                    android:textColor="@color/white"
+                    android:textColor="@color/text_main"
                     android:textColorHint="@color/text_grey" />
             </com.google.android.material.textfield.TextInputLayout>
 
@@ -166,7 +166,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:text="@string/confirm_password"
-                android:textColor="@color/white"
+                android:textColor="@color/text_main"
                 android:textSize="14sp"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/til_password_signup" />
@@ -190,7 +190,7 @@
                     android:importantForAutofill="no"
                     android:inputType="textPassword"
                     android:paddingHorizontal="16dp"
-                    android:textColor="@color/white"
+                    android:textColor="@color/text_main"
                     android:textColorHint="@color/text_grey" />
             </com.google.android.material.textfield.TextInputLayout>
 

@@ -20,18 +20,22 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class TicketsFragment extends Fragment {
+public class TicketsFragment extends Fragment implements DataRepository.DataChangeListener {
 
     private RecyclerView rvTickets;
     private TicketAdapter adapter;
     private List<Ticket> allTickets = new ArrayList<>();
     private TextView tvFilterAll, tvFilterOpen, tvFilterProgress, tvFilterClosed;
     private String currentStatus = null;
+    private DataRepository repository;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_tickets, container, false);
+
+        repository = DataRepository.getInstance(getContext());
+        repository.addListener(this);
 
         ImageButton btnBack = view.findViewById(R.id.btn_back);
         btnBack.setOnClickListener(v -> {
@@ -52,6 +56,15 @@ public class TicketsFragment extends Fragment {
         rvTickets.setAdapter(adapter);
 
         setupFilters();
+        
+        // Load from cache first
+        List<Ticket> cached = repository.getCachedTickets();
+        if (cached != null) {
+            allTickets.clear();
+            allTickets.addAll(cached);
+            adapter.notifyDataSetChanged();
+        }
+
         fetchTickets(null);
 
         return view;
@@ -84,7 +97,6 @@ public class TicketsFragment extends Fragment {
     }
 
     private void updateFilterUI(TextView activeFilter) {
-        // Reset all
         TextView[] filters = {tvFilterAll, tvFilterOpen, tvFilterProgress, tvFilterClosed};
         for (TextView tv : filters) {
             tv.setBackgroundResource(0);
@@ -92,7 +104,6 @@ public class TicketsFragment extends Fragment {
             tv.setTypeface(null, android.graphics.Typeface.NORMAL);
         }
 
-        // Set active
         activeFilter.setBackgroundResource(R.color.primary_blue);
         activeFilter.setTextColor(ContextCompat.getColor(getContext(), R.color.white));
         activeFilter.setTypeface(null, android.graphics.Typeface.BOLD);
@@ -109,17 +120,29 @@ public class TicketsFragment extends Fragment {
                         allTickets.clear();
                         allTickets.addAll(ticketsResponse.getTickets());
                         adapter.notifyDataSetChanged();
+                        // Update cache if it's the main list
+                        if (status == null) {
+                            repository.cacheTickets(allTickets);
+                        }
                     }
-                } else {
-                    Toast.makeText(getContext(), "Failed to load tickets", Toast.LENGTH_SHORT).show();
                 }
             }
 
             @Override
             public void onFailure(Call<ApiResponse<TicketsResponse>> call, Throwable t) {
                 Log.e("TicketsFragment", "Error: " + t.getMessage());
-                Toast.makeText(getContext(), "Network Error", Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    @Override
+    public void onDataChanged() {
+        fetchTickets(currentStatus);
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        repository.removeListener(this);
     }
 }

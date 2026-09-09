@@ -22,6 +22,9 @@ public class Ticket {
     @SerializedName("statusHistory")
     private List<StatusHistory> statusHistory;
 
+    @SerializedName("assignedTechnician")
+    private User assignedTechnician;
+
     public String getId() { return id; }
     public String getSubject() { return subject; }
     public String getDescription() { return description; }
@@ -31,6 +34,7 @@ public class Ticket {
     public String getTimeAgo() { return timeAgo; }
     public String getCreatedAt() { return createdAt; }
     public List<StatusHistory> getStatusHistory() { return statusHistory; }
+    public User getAssignedTechnician() { return assignedTechnician; }
     
     public String getTime() { return timeAgo; }
 
