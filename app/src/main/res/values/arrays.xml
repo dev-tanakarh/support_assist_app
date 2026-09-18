@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="status_filter_labels">
+        <item>All</item>
+        <item>Open</item>
+        <item>In Progress</item>
+        <item>Resolved</item>
+        <item>Closed</item>
+    </string-array>
+    <!-- Index-matched to status_filter_labels above; empty string = no filter (send null) -->
+    <string-array name="status_filter_values">
+        <item></item>
+        <item>OPEN</item>
+        <item>IN_PROGRESS</item>
+        <item>RESOLVED</item>
+        <item>CLOSED</item>
+    </string-array>
+
+    <string-array name="user_type_filter_labels">
+        <item>Technicians</item>
+        <item>End Users</item>
+        <item>Admins</item>
+    </string-array>
+    <string-array name="user_type_filter_values">
+        <item>TECHNICIAN</item>
+        <item>END_USER</item>
+        <item>ADMIN</item>
+    </string-array>
+</resources>

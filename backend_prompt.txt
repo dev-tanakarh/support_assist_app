@@ -1,0 +1,42 @@
+# AI Agent Prompt: SupportAssist Backend Development
+
+## Project Overview
+Build a RESTful API backend for a "SupportAssist" Helpdesk application. The backend will replace all currently hardcoded data in the Android app.
+
+## Technical Stack
+* Language: PHP (using a modern framework like Laravel or Slim, or pure PHP with PDO).
+* Database: PostgreSQL.
+* Architecture: RESTful API returning JSON.
+* Authentication: JWT (JSON Web Tokens) for secure session management.
+
+## Database Schema (PostgreSQL)
+Please create the following tables:
+1. users: id (UUID/Serial), name, email (unique), phone, password (hashed), created_at.
+2. tickets: id (custom format like TKT-YYYY-XXXX), user_id (FK), subject, description, category_id (FK), status (Enum: Open, In Progress, Resolved, Closed), priority (Enum: High, Medium, Low), created_at, updated_at.
+3. ticket_categories: id, name (e.g., Network Issues, Software Issues).
+4. alerts: id, user_id (FK), title, type (to determine icon), color_code, created_at.
+
+## Required API Endpoints
+
+### 1. Authentication
+* POST /api/signup: Register a new user (name, email, phone, password).
+* POST /api/login: Validate credentials and return a JWT token + user profile.
+
+### 2. Tickets
+* GET /api/tickets: List all tickets for the authenticated user.
+* GET /api/tickets/recent: List the 3 most recent tickets (for Home screen).
+* GET /api/tickets/{id}: Get full details of a specific ticket, including description and status history.
+* POST /api/tickets: Create a new ticket (subject, description, category_id, priority).
+* GET /api/categories: Fetch available ticket categories for the spinner.
+
+### 3. Alerts
+* GET /api/alerts: List all notifications/alerts for the authenticated user. Include a time_ago string or timestamp that the app can format.
+
+### 4. Profile
+* GET /api/profile: Return details for the authenticated user.
+
+## Specific Requirements
+1. Data Logic: The time field in the app (e.g., "10 mins ago", "2 days ago") should be dynamically calculated by the backend or returned as a standard ISO timestamp for the app to parse.
+2. Security: Implement password hashing (Bcrypt). Use prepared statements for all PostgreSQL queries to prevent SQL injection.
+3. Seeding: Provide a SQL script or migration to seed the database with initial categories and the default admin user (admin@helpdesk.com / admin123).
+4. Documentation: Provide a brief list of the endpoints with their required request bodies and sample JSON responses matching the existing Java models (Ticket.java, Alert.java).
