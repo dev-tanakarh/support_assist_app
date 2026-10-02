@@ -8,6 +8,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RatingBar;
 import android.widget.Spinner;
@@ -15,7 +16,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import com.bumptech.glide.Glide;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.card.MaterialCardView;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -32,6 +35,8 @@ public class TicketDetailsActivity extends AppCompatActivity {
     private ImageButton btnSendComment;
     private RatingBar rbRating;
     private LinearLayout llCommentInput;
+    private MaterialCardView cvAttachment;
+    private ImageView ivAttachment;
 
     private LinearLayout llRoleActions, llResolveBlock, llAssignBlock;
     private MaterialButton btnAccept, btnResolve, btnAssign;
@@ -66,6 +71,8 @@ public class TicketDetailsActivity extends AppCompatActivity {
         btnSendComment = findViewById(R.id.btn_send_comment);
         rbRating = findViewById(R.id.rb_rating);
         llCommentInput = findViewById(R.id.ll_comment_input);
+        cvAttachment = findViewById(R.id.cv_attachment);
+        ivAttachment = findViewById(R.id.iv_attachment);
 
         llRoleActions = findViewById(R.id.ll_role_actions);
         btnAccept = findViewById(R.id.btn_accept);
@@ -84,7 +91,6 @@ public class TicketDetailsActivity extends AppCompatActivity {
 
         ticketId = getIntent().getStringExtra("ticket_id");
         if (ticketId != null) {
-            // Cache details for instant loading if available
             Ticket cached = repository.getCachedTicketDetail(ticketId);
             if (cached != null) {
                 updateUI(cached);
@@ -104,7 +110,6 @@ public class TicketDetailsActivity extends AppCompatActivity {
             public void onResponse(Call<ApiResponse<Ticket>> call, Response<ApiResponse<Ticket>> response) {
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                     Ticket ticket = response.body().getData();
-                    // Update cache with the fresh details
                     repository.cacheTicketDetail(ticket);
                     updateUI(ticket);
                 }
@@ -126,7 +131,16 @@ public class TicketDetailsActivity extends AppCompatActivity {
         tvDescription.setText(ticket.getDescription());
         tvDate.setText(ticket.getTimeAgo());
 
-        // Display Assigned Technician
+        if (ticket.getAttachmentUrl() != null && !ticket.getAttachmentUrl().isEmpty()) {
+            cvAttachment.setVisibility(View.VISIBLE);
+            Glide.with(this)
+                    .load(ticket.getAttachmentUrl())
+                    .placeholder(R.color.card_bg)
+                    .into(ivAttachment);
+        } else {
+            cvAttachment.setVisibility(View.GONE);
+        }
+
         if (ticket.getAssignedTechnician() != null && ticket.getAssignedTechnician().getName() != null) {
             tvTechnician.setText(ticket.getAssignedTechnician().getName());
         } else {
@@ -134,7 +148,7 @@ public class TicketDetailsActivity extends AppCompatActivity {
         }
 
         String status = ticket.getStatus();
-        tvStatus.setText(status);
+        tvStatus.setText(statusLabel(status));
         if (status != null) {
             if (status.equalsIgnoreCase("OPEN")) {
                 tvStatus.setBackgroundResource(R.drawable.status_open_bg);
@@ -166,7 +180,6 @@ public class TicketDetailsActivity extends AppCompatActivity {
             }
         }
 
-        // Handle Status History / Updates
         llUpdatesContainer.removeAllViews();
         List<Ticket.StatusHistory> history = ticket.getStatusHistory();
         if (history != null && !history.isEmpty()) {
@@ -191,12 +204,11 @@ public class TicketDetailsActivity extends AppCompatActivity {
         applyRoleActions(ticket);
     }
 
-    /**
-     * Shows exactly the actions that make sense for this role + this ticket's
-     * current state. The review box is END_USER-only — the backend's
-     * POST /tickets/{id}/review route is END_USER-only too (see routes.php),
-     * so showing it to a technician/admin would just be a guaranteed 403.
-     */
+    private String statusLabel(String status) {
+        if (status == null) return "";
+        return status.replace('_', ' ');
+    }
+
     private void applyRoleActions(Ticket ticket) {
         String role = tokenManager.getUserType();
         boolean isEndUser = "END_USER".equals(role) || role == null;
@@ -243,7 +255,6 @@ public class TicketDetailsActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(Call<ApiResponse<List<User>>> call, Throwable t) {
-                // Assign block just won't have anything to pick — acceptable, no crash.
             }
         });
     }
@@ -335,7 +346,7 @@ public class TicketDetailsActivity extends AppCompatActivity {
         if (comment.isEmpty()) return;
 
         int rating = Math.round(rbRating.getRating());
-        if (rating < 1) rating = 1; // RatingBar can report 0 if never touched; reviews need 1-5
+        if (rating < 1) rating = 1;
 
         Map<String, Object> body = new HashMap<>();
         body.put("rating", rating);
@@ -346,7 +357,7 @@ public class TicketDetailsActivity extends AppCompatActivity {
             public void onResponse(Call<ApiResponse<Map<String, Object>>> call, Response<ApiResponse<Map<String, Object>>> response) {
                 if (response.isSuccessful()) {
                     etComment.setText("");
-                    fetchTicketDetails(ticketId); // Refresh details
+                    fetchTicketDetails(ticketId);
                 }
             }
 

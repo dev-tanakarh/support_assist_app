@@ -9,9 +9,9 @@
         android:icon="@drawable/ic_tickets"
         android:title="@string/nav_tickets" />
     <item
-        android:id="@+id/nav_placeholder"
-        android:enabled="false"
-        android:title="" />
+        android:id="@+id/nav_create_ticket"
+        android:icon="@android:drawable/ic_input_add"
+        android:title="@string/create_new_ticket" />
     <item
         android:id="@+id/nav_alerts"
         android:icon="@drawable/ic_alerts"

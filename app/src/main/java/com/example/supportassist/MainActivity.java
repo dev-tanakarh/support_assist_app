@@ -26,16 +26,12 @@ public class MainActivity extends AppCompatActivity {
     @Inject AlertPoller alertPoller;
     @Inject ApiService apiService;
     private BottomNavigationView bottomNav;
-    private FloatingActionButton fab;
     private TokenManager tokenManager;
     private boolean doubleBackToExitPressedOnce = false;
     private int homeItemId = R.id.nav_home;
 
     private final ActivityResultLauncher<String> notificationPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
-                // Nothing to do either way — FCM still registers the token and
-                // delivers silently in the background if this is denied, the
-                // user just won't see a system notification for it.
             });
 
     @Override
@@ -49,7 +45,6 @@ public class MainActivity extends AppCompatActivity {
         FcmTokenSync.registerCurrentToken(apiService);
 
         bottomNav = findViewById(R.id.bottomNavigationView);
-        fab = findViewById(R.id.fab);
 
         setUpNavForRole();
 
@@ -75,42 +70,34 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    /**
-     * The layout's default menu (bottom_nav_menu.xml) is the END_USER one —
-     * for the other two roles we swap it at runtime, per the role saved at
-     * login (see TokenManager.saveUser). Only END_USER creates tickets, so
-     * the FAB is hidden entirely for technician/admin, matching the web app
-     * where neither role has a "new ticket" action.
-     */
     private void setUpNavForRole() {
         String role = tokenManager.getUserType();
 
         if ("TECHNICIAN".equals(role)) {
             bottomNav.getMenu().clear();
             bottomNav.inflateMenu(R.menu.bottom_nav_menu_technician);
-            fab.setVisibility(View.GONE);
             homeItemId = R.id.nav_tech_dashboard;
         } else if ("ADMIN".equals(role)) {
             bottomNav.getMenu().clear();
             bottomNav.inflateMenu(R.menu.bottom_nav_menu_admin);
-            fab.setVisibility(View.GONE);
             homeItemId = R.id.nav_admin_dashboard;
         } else {
-            // END_USER, or role somehow missing — the layout's default menu already fits.
-            fab.setVisibility(View.VISIBLE);
             homeItemId = R.id.nav_home;
         }
 
         bottomNav.setOnItemSelectedListener(item -> {
-            Fragment selectedFragment = fragmentFor(item.getItemId());
+            int itemId = item.getItemId();
+            if (itemId == R.id.nav_create_ticket) {
+                startActivity(new Intent(MainActivity.this, CreateTicketActivity.class));
+                return false; // Don't select the item
+            }
+            Fragment selectedFragment = fragmentFor(itemId);
             if (selectedFragment != null) {
                 loadFragment(selectedFragment);
                 return true;
             }
             return false;
         });
-
-        fab.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, CreateTicketActivity.class)));
     }
 
     @Nullable
@@ -133,7 +120,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void requestNotificationPermissionIfNeeded() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return; // pre-Android 13: no runtime prompt needed
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return;
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
                 != PackageManager.PERMISSION_GRANTED) {
             notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS);
@@ -143,8 +130,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-        // Real-time updates only while the app is actually in front of the
-        // user — see AlertPoller's docblock for why this isn't a background loop.
         alertPoller.start();
     }
 
@@ -161,7 +146,6 @@ public class MainActivity extends AppCompatActivity {
                 .commit();
     }
 
-    /** Only meaningful for END_USER, whose menu has a tickets tab — the only role HomeFragment (which calls this) is ever shown for. */
     public void navigateToTickets() {
         bottomNav.setSelectedItemId(R.id.nav_tickets);
     }

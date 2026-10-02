@@ -38,161 +38,165 @@ fun ProfileScreen(
     val textMain = colorResource(id = R.color.text_main)
     val textGrey = colorResource(id = R.color.text_grey)
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(bgColor)
-            .verticalScroll(scrollState)
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .background(bgColor),
+        contentAlignment = Alignment.TopCenter
     ) {
-        Text(
-            text = "Profile",
-            color = textMain,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Profile Header Card
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = cardBg),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(max = 600.dp) // Maintain readability on large screens
+                .verticalScroll(scrollState)
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row(
-                modifier = Modifier.padding(24.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(80.dp)
-                        .clip(CircleShape)
-                        .background(primaryBlue.copy(alpha = 0.1f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        modifier = Modifier.size(40.dp),
-                        tint = primaryBlue
-                    )
-                }
+            Text(
+                text = "Profile",
+                color = textMain,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
 
-                Column(modifier = Modifier.padding(start = 16.dp)) {
-                    Text(
-                        text = user?.name ?: "...",
-                        color = textMain,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = user?.email ?: "...",
-                        color = textGrey,
-                        fontSize = 14.sp
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Surface(
-                        color = colorResource(id = R.color.status_open_bg),
-                        shape = RoundedCornerShape(16.dp)
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Profile Header Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = cardBg),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(24.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(CircleShape)
+                            .background(primaryBlue.copy(alpha = 0.1f)),
+                        contentAlignment = Alignment.Center
                     ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            modifier = Modifier.size(40.dp),
+                            tint = primaryBlue
+                        )
+                    }
+
+                    Column(modifier = Modifier.padding(start = 16.dp)) {
                         Text(
-                            text = "Member",
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                            color = colorResource(id = R.color.status_open_text),
-                            fontSize = 10.sp,
+                            text = user?.name ?: "...",
+                            color = textMain,
+                            fontSize = 22.sp,
                             fontWeight = FontWeight.Bold
                         )
+                        Text(
+                            text = user?.email ?: "...",
+                            color = textGrey,
+                            fontSize = 14.sp
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            color = colorResource(id = R.color.status_open_bg),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Text(
+                                text = "Member",
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                color = colorResource(id = R.color.status_open_text),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-        // Stats Row
-        Row(modifier = Modifier.fillMaxWidth()) {
-            StatCard(
-                label = "Total Tickets",
-                value = totalTickets.toString(),
-                modifier = Modifier.weight(1f),
-                cardBg = cardBg,
-                textMain = textMain,
-                textGrey = textGrey
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            StatCard(
-                label = "Resolved",
-                value = resolvedTickets.toString(),
-                modifier = Modifier.weight(1f),
-                cardBg = cardBg,
-                textMain = textMain,
-                textGrey = textGrey
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Settings Card
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = cardBg),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-        ) {
-            Column(modifier = Modifier.padding(8.dp)) {
-                MenuItem(icon = Icons.Default.Person, label = "Edit Profile", textColor = textMain)
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = colorResource(id = R.color.divider_color))
-                MenuItem(icon = Icons.Default.Info, label = "Help Support", textColor = textMain)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Theme card — an explicit in-app override on top of the OS's own
-        // dark/light setting (the app already follows that automatically via
-        // values-night/ resources; this just lets someone pick regardless of
-        // their phone's setting). See ThemeManager.
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = cardBg),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(text = "Appearance", color = textMain, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(12.dp))
-                ThemeSelector(
-                    currentMode = currentThemeMode,
-                    onModeSelected = onThemeChange,
-                    primaryBlue = primaryBlue,
+            // Stats Row
+            Row(modifier = Modifier.fillMaxWidth()) {
+                StatCard(
+                    label = "Total Tickets",
+                    value = totalTickets.toString(),
+                    modifier = Modifier.weight(1f),
+                    cardBg = cardBg,
                     textMain = textMain,
-                    bgColor = bgColor
+                    textGrey = textGrey
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                StatCard(
+                    label = "Resolved",
+                    value = resolvedTickets.toString(),
+                    modifier = Modifier.weight(1f),
+                    cardBg = cardBg,
+                    textMain = textMain,
+                    textGrey = textGrey
                 )
             }
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-        Button(
-            onClick = onLogout,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = colorResource(id = R.color.priority_high_bg))
-        ) {
-            Text(
-                text = "Logout",
-                color = colorResource(id = R.color.priority_high_text),
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
-            )
+            // Settings Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = cardBg),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                Column(modifier = Modifier.padding(8.dp)) {
+                    MenuItem(icon = Icons.Default.Person, label = "Edit Profile", textColor = textMain)
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = colorResource(id = R.color.divider_color))
+                    MenuItem(icon = Icons.Default.Info, label = "Help Support", textColor = textMain)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = cardBg),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(text = "Appearance", color = textMain, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    ThemeSelector(
+                        currentMode = currentThemeMode,
+                        onModeSelected = onThemeChange,
+                        primaryBlue = primaryBlue,
+                        textMain = textMain,
+                        bgColor = bgColor
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = onLogout,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = colorResource(id = R.color.priority_high_bg))
+            ) {
+                Text(
+                    text = "Logout",
+                    color = colorResource(id = R.color.priority_high_text),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+            }
+            
+            // Bottom padding for navbar
+            Spacer(modifier = Modifier.height(100.dp))
         }
-        
-        Spacer(modifier = Modifier.height(24.dp))
     }
 }
 
@@ -253,7 +257,6 @@ fun ThemeSelector(
     }
 }
 
-/** Mirrors ThemeManager's string constants — kept as plain strings there since that class is Java, read by Kotlin here. */
 object ThemeManagerModes {
     const val LIGHT = "light"
     const val DARK = "dark"

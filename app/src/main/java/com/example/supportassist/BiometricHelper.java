@@ -17,7 +17,8 @@ public class BiometricHelper {
 
     public static boolean isBiometricAvailable(Context context) {
         BiometricManager biometricManager = BiometricManager.from(context);
-        return biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS;
+        int result = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.BIOMETRIC_WEAK);
+        return result == BiometricManager.BIOMETRIC_SUCCESS;
     }
 
     public static void showBiometricPrompt(@NonNull FragmentActivity activity, @NonNull BiometricCallback callback) {
@@ -46,6 +47,7 @@ public class BiometricHelper {
                 .setTitle("Biometric Login")
                 .setSubtitle("Log in using your fingerprint")
                 .setNegativeButtonText("Use Password")
+                .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.BIOMETRIC_WEAK)
                 .build();
 
         biometricPrompt.authenticate(promptInfo);

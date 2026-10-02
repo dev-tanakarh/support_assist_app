@@ -24,8 +24,10 @@ import retrofit2.Response;
 public class TechnicianDashboardFragment extends Fragment {
 
     @Inject ApiService apiService;
+    @Inject TokenManager tokenManager;
 
     private ProgressBar progressBar;
+    private TextView tvGreeting;
     private TextView tvStatUnassigned, tvStatActive, tvStatResolvedMonth;
     private RecyclerView rvUnassigned, rvMyActive;
     private TextView tvUnassignedEmpty, tvActiveEmpty;
@@ -37,6 +39,7 @@ public class TechnicianDashboardFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_technician_dashboard, container, false);
 
         progressBar = view.findViewById(R.id.loading_indicator);
+        tvGreeting = view.findViewById(R.id.tv_tech_greeting);
         tvStatUnassigned = view.findViewById(R.id.tv_stat_unassigned);
         tvStatActive = view.findViewById(R.id.tv_stat_active);
         tvStatResolvedMonth = view.findViewById(R.id.tv_stat_resolved_month);
@@ -53,6 +56,12 @@ public class TechnicianDashboardFragment extends Fragment {
         rvMyActive.setLayoutManager(new LinearLayoutManager(getContext()));
         rvMyActive.setAdapter(myActiveAdapter);
 
+        String name = tokenManager.getUserName();
+        if (name == null || name.isEmpty()) name = "User";
+        if (tvGreeting != null) {
+            tvGreeting.setText("Hi, " + name);
+        }
+
         loadDashboard();
         return view;
     }
@@ -60,13 +69,12 @@ public class TechnicianDashboardFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        loadDashboard(); // pick up anything accepted/resolved elsewhere since the last time this tab was visible
+        loadDashboard();
     }
 
     private void loadDashboard() {
         progressBar.setVisibility(View.VISIBLE);
 
-        // Unassigned pool — first 6, for the preview list.
         apiService.getTicketsList(null, null, 1, 1, 6).enqueue(new Callback<ApiResponse<TicketsResponse>>() {
             @Override
             public void onResponse(Call<ApiResponse<TicketsResponse>> call, Response<ApiResponse<TicketsResponse>> response) {
@@ -87,8 +95,6 @@ public class TechnicianDashboardFragment extends Fragment {
             }
         });
 
-        // My tickets — backend auto-scopes to "assigned to me" for a technician
-        // when `unassigned` isn't set (see routes.php's note on GET /tickets).
         apiService.getTicketsList(null, null, null, 1, 100).enqueue(new Callback<ApiResponse<TicketsResponse>>() {
             @Override
             public void onResponse(Call<ApiResponse<TicketsResponse>> call, Response<ApiResponse<TicketsResponse>> response) {
@@ -120,7 +126,6 @@ public class TechnicianDashboardFragment extends Fragment {
 
             @Override
             public void onFailure(Call<ApiResponse<TicketsResponse>> call, Throwable t) {
-                // Unassigned-pool call already turned the spinner off; this one fails quietly.
             }
         });
     }
@@ -130,7 +135,6 @@ public class TechnicianDashboardFragment extends Fragment {
         return String.format("%04d-%02d", cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1);
     }
 
-    /** Timestamps come back as "2026-09-10 17:32:06.52...-07" — the "yyyy-MM" prefix is all we need, so avoid a brittle full-format parse. */
     private static boolean isInMonth(String timestamp, String yearMonth) {
         return timestamp != null && timestamp.length() >= 7 && timestamp.substring(0, 7).equals(yearMonth);
     }

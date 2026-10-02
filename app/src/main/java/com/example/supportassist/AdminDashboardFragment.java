@@ -10,7 +10,10 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import dagger.hilt.android.AndroidEntryPoint;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import javax.inject.Inject;
@@ -22,10 +25,14 @@ import retrofit2.Response;
 public class AdminDashboardFragment extends Fragment {
 
     @Inject ApiService apiService;
+    @Inject TokenManager tokenManager;
 
     private ProgressBar progressBar;
+    private TextView tvGreeting;
     private TextView tvTotal, tvOverdue, tvAvgResolution;
     private LinearLayout llByStatus, llByPriority, llTopTechnicians;
+    private RecyclerView rvRecentTickets;
+    private TicketAdapter recentTicketsAdapter;
 
     @Nullable
     @Override
@@ -33,14 +40,25 @@ public class AdminDashboardFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_admin_dashboard, container, false);
 
         progressBar = view.findViewById(R.id.loading_indicator);
+        tvGreeting = view.findViewById(R.id.tv_admin_greeting);
         tvTotal = view.findViewById(R.id.tv_stat_total);
         tvOverdue = view.findViewById(R.id.tv_stat_overdue);
         tvAvgResolution = view.findViewById(R.id.tv_stat_avg_resolution);
         llByStatus = view.findViewById(R.id.ll_by_status);
         llByPriority = view.findViewById(R.id.ll_by_priority);
         llTopTechnicians = view.findViewById(R.id.ll_top_technicians);
+        rvRecentTickets = view.findViewById(R.id.rv_recent_tickets);
+
+        recentTicketsAdapter = new TicketAdapter(new ArrayList<>());
+        rvRecentTickets.setLayoutManager(new LinearLayoutManager(getContext()));
+        rvRecentTickets.setAdapter(recentTicketsAdapter);
+
+        String name = tokenManager.getUserName();
+        if (name == null || name.isEmpty()) name = "Admin";
+        tvGreeting.setText(getString(R.string.hi_user, name));
 
         loadDashboard();
+        loadRecentTickets();
         return view;
     }
 
@@ -48,6 +66,7 @@ public class AdminDashboardFragment extends Fragment {
     public void onResume() {
         super.onResume();
         loadDashboard();
+        loadRecentTickets();
     }
 
     private void loadDashboard() {
@@ -68,6 +87,21 @@ public class AdminDashboardFragment extends Fragment {
         });
     }
 
+    private void loadRecentTickets() {
+        apiService.getTicketsList(null, null, null, 1, 5).enqueue(new Callback<ApiResponse<TicketsResponse>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<TicketsResponse>> call, Response<ApiResponse<TicketsResponse>> response) {
+                if (!isAdded() || response.body() == null || !response.body().isSuccess()) return;
+                List<Ticket> tickets = response.body().getData().getTickets();
+                if (tickets != null) {
+                    recentTicketsAdapter.updateTickets(tickets);
+                }
+            }
+            @Override
+            public void onFailure(Call<ApiResponse<TicketsResponse>> call, Throwable t) {}
+        });
+    }
+
     private void render(DashboardStats stats) {
         int total = 0;
         if (stats.getByStatus() != null) {
@@ -82,7 +116,6 @@ public class AdminDashboardFragment extends Fragment {
         renderRows(llTopTechnicians, stats.getTopTechnicians(), DashboardStats.TopTechnician::getName, DashboardStats.TopTechnician::getResolvedCount);
     }
 
-    /** One tiny generic helper instead of three near-identical loops — each list is just "label" + "count" rendered as a row. */
     private <T> void renderRows(LinearLayout container, List<T> items, java.util.function.Function<T, String> label, java.util.function.ToIntFunction<T> count) {
         container.removeAllViews();
         if (items == null || items.isEmpty()) {

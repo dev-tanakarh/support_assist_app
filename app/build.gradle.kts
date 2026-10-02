@@ -9,24 +9,11 @@ plugins {
     alias(libs.plugins.compose.compiler)
 }
 
-// google-services requires app/google-services.json to exist, and fails the
-// whole build immediately if it doesn't. That file has to come from your own
-// Firebase project (Firebase Console → Project Settings → your Android app →
-// download google-services.json) — nobody can hand you a working one, it's
-// tied to your project's credentials. Applying the plugin only when the file
-// is actually present means the rest of the app still builds and runs before
-// you've done that step; FCM just won't initialize until you have.
 val googleServicesFile = file("google-services.json")
 if (googleServicesFile.exists()) {
     apply(plugin = "com.google.gms.google-services")
 }
 
-// Reads API_BASE_URL from local.properties (gitignored, machine-specific) so
-// nobody has to hardcode a URL into source that then gets committed — see
-// RUNNING.md's note about the ngrok URL that used to be here and had already
-// expired. Defaults to 10.0.2.2, which is the Android emulator's alias for
-// "the host machine's localhost" — matches the backend's docker-compose
-// setup (port 8080) out of the box for local development.
 val localProperties = Properties().apply {
     val file = rootProject.file("local.properties")
     if (file.exists()) load(FileInputStream(file))
@@ -135,6 +122,10 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
     implementation(libs.gson)
+
+    // Glide
+    implementation(libs.glide)
+    ksp(libs.glide.compiler)
 
     // RxJava Support
     implementation("io.reactivex.rxjava3:rxandroid:3.0.2")

@@ -1,17 +1,20 @@
 package com.example.supportassist;
 
+import android.app.AlertDialog;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
+import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import com.google.android.material.button.MaterialButton;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -46,16 +49,43 @@ public class AlertsFragment extends Fragment {
         adapter = new AlertAdapter(alertsList);
         rvAlerts.setAdapter(adapter);
 
-        // Set click listener for marking alerts as read
         adapter.setOnAlertClickListener((alert, position) -> {
-            if (!alert.isRead()) {
-                markAlertRead(alert.getId());
-            }
+            showAlertDetails(alert);
         });
 
         fetchAlerts();
 
         return view;
+    }
+
+    private void showAlertDetails(Alert alert) {
+        View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_alert_details, null);
+        AlertDialog dialog = new AlertDialog.Builder(getContext(), R.style.CustomDialogTheme)
+                .setView(dialogView)
+                .create();
+
+        TextView tvTitle = dialogView.findViewById(R.id.tv_alert_detail_title);
+        TextView tvMessage = dialogView.findViewById(R.id.tv_alert_detail_message);
+        TextView tvTime = dialogView.findViewById(R.id.tv_alert_detail_time);
+        MaterialButton btnMarkRead = dialogView.findViewById(R.id.btn_mark_read);
+        MaterialButton btnClose = dialogView.findViewById(R.id.btn_close_dialog);
+
+        tvTitle.setText(alert.getTitle());
+        tvMessage.setText(alert.getMessage());
+        tvTime.setText(alert.getCreatedAt());
+
+        if (alert.isRead()) {
+            btnMarkRead.setVisibility(View.GONE);
+        } else {
+            btnMarkRead.setOnClickListener(v -> {
+                markAlertRead(alert.getId());
+                dialog.dismiss();
+            });
+        }
+
+        btnClose.setOnClickListener(v -> dialog.dismiss());
+
+        dialog.show();
     }
 
     private void fetchAlerts() {
@@ -84,7 +114,6 @@ public class AlertsFragment extends Fragment {
             @Override
             public void onResponse(Call<ApiResponse<Map<String, String>>> call, Response<ApiResponse<Map<String, String>>> response) {
                 if (response.isSuccessful()) {
-                    // Refresh alerts to update UI
                     fetchAlerts();
                 }
             }

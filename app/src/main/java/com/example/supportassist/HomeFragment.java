@@ -25,6 +25,7 @@ import retrofit2.Response;
 public class HomeFragment extends Fragment {
 
     @Inject ApiService apiService;
+    @Inject TokenManager tokenManager;
 
     private RecyclerView rvRecentTickets;
     private TicketAdapter adapter;
@@ -52,6 +53,10 @@ public class HomeFragment extends Fragment {
         adapter = new TicketAdapter(recentTicketsList);
         rvRecentTickets.setAdapter(adapter);
 
+        String name = tokenManager.getUserName();
+        if (name == null || name.isEmpty()) name = "User";
+        tvGreeting.setText(getString(R.string.hi_user, name));
+
         observeViewModel();
         loadStats();
 
@@ -65,7 +70,6 @@ public class HomeFragment extends Fragment {
     }
 
     private void observeViewModel() {
-        // Fixed: Observe the correct LiveData member
         viewModel.recentTickets.observe(getViewLifecycleOwner(), tickets -> {
             recentTicketsList.clear();
             if (tickets != null) {
@@ -81,14 +85,6 @@ public class HomeFragment extends Fragment {
         });
     }
 
-    /**
-     * Category tiles used to sit here and just deep-link into CreateTicketActivity
-     * with a pre-filled category — replaced with a quick "where do my tickets
-     * stand" summary instead, per redesign. Counts are computed client-side
-     * from the user's own tickets (the backend has no per-status-count
-     * endpoint for end users, only the admin dashboard does) — fine at this
-     * scale (per_page 100 covers realistically anyone's ticket history).
-     */
     private void loadStats() {
         apiService.getTicketsList(null, null, null, 1, 100).enqueue(new Callback<ApiResponse<TicketsResponse>>() {
             @Override
@@ -112,8 +108,6 @@ public class HomeFragment extends Fragment {
 
             @Override
             public void onFailure(Call<ApiResponse<TicketsResponse>> call, Throwable t) {
-                // Leave the placeholder dashes — this is a "nice to have"
-                // summary, not worth an error toast if the network hiccups.
             }
         });
     }
