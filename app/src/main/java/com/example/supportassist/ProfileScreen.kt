@@ -17,11 +17,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
+import com.bumptech.glide.integration.compose.GlideImage
 
+@OptIn(ExperimentalGlideComposeApi::class)
 @Composable
 fun ProfileScreen(
     user: User?,
@@ -29,7 +33,8 @@ fun ProfileScreen(
     resolvedTickets: Int,
     currentThemeMode: String,
     onThemeChange: (String) -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onEditProfile: () -> Unit
 ) {
     val scrollState = rememberScrollState()
     val bgColor = colorResource(id = R.color.bg_color)
@@ -79,12 +84,21 @@ fun ProfileScreen(
                             .background(primaryBlue.copy(alpha = 0.1f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = null,
-                            modifier = Modifier.size(40.dp),
-                            tint = primaryBlue
-                        )
+                        if (user?.profileImageUrl != null) {
+                            GlideImage(
+                                model = user.profileImageUrl,
+                                contentDescription = "Profile Picture",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                modifier = Modifier.size(40.dp),
+                                tint = primaryBlue
+                            )
+                        }
                     }
 
                     Column(modifier = Modifier.padding(start = 16.dp)) {
@@ -105,7 +119,7 @@ fun ProfileScreen(
                             shape = RoundedCornerShape(16.dp)
                         ) {
                             Text(
-                                text = "Member",
+                                text = user?.userType ?: "Member",
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                                 color = colorResource(id = R.color.status_open_text),
                                 fontSize = 10.sp,
@@ -149,14 +163,25 @@ fun ProfileScreen(
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 Column(modifier = Modifier.padding(8.dp)) {
-                    MenuItem(icon = Icons.Default.Person, label = "Edit Profile", textColor = textMain)
+                    MenuItem(
+                        icon = Icons.Default.Person,
+                        label = "Edit Profile",
+                        textColor = textMain,
+                        onClick = onEditProfile
+                    )
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = colorResource(id = R.color.divider_color))
-                    MenuItem(icon = Icons.Default.Info, label = "Help Support", textColor = textMain)
+                    MenuItem(
+                        icon = Icons.Default.Info,
+                        label = "Help Support",
+                        textColor = textMain,
+                        onClick = { /* Handle Help */ }
+                    )
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Appearance Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -264,12 +289,12 @@ object ThemeManagerModes {
 }
 
 @Composable
-fun MenuItem(icon: ImageVector, label: String, textColor: Color) {
+fun MenuItem(icon: ImageVector, label: String, textColor: Color, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(56.dp)
-            .clickable { }
+            .clickable { onClick() }
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

@@ -145,4 +145,15 @@
     <!-- Notifications -->
     <string name="notifications">Notifications</string>
     <string name="mark_all_as_read">Mark all as read</string>
+
+    <!-- Edit Profile -->
+    <string name="edit_profile">Edit Profile</string>
+    <string name="save_changes">Save Changes</string>
+    <string name="saving">Saving...</string>
+    <string name="uploading_image">Uploading Image...</string>
+    <string name="profile_updated">Profile Updated</string>
+    <string name="failed_to_update_profile">Failed to update profile</string>
+    <string name="failed_to_upload_image">Failed to upload image</string>
+    <string name="name_empty_error">Name cannot be empty</string>
+    <string name="email_readonly">Email (Cannot be changed)</string>
 </resources>

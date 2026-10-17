@@ -37,6 +37,13 @@ public interface ApiService {
     @GET("profile")
     Call<ApiResponse<User>> getProfile();
 
+    @PATCH("profile")
+    Call<ApiResponse<User>> updateProfile(@Body Map<String, String> body);
+
+    @Multipart
+    @POST("profile/image")
+    Call<ApiResponse<User>> updateProfilePicture(@Part MultipartBody.Part image);
+
     @GET("categories")
     Call<ApiResponse<List<Category>>> getCategories();
 

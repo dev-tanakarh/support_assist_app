@@ -13,6 +13,8 @@ public class User {
     private boolean isActive;
     @SerializedName("createdAt")
     private String createdAt;
+    @SerializedName("profile_image_url")
+    private String profileImageUrl;
 
     // Only present in responses from GET /admin/users — see User::toPublicArray
     // on the backend. Null/0 for every other response (login, profile, etc.),
@@ -39,4 +41,5 @@ public class User {
     public String getCreatedAt() { return createdAt; }
     public Double getRating() { return rating; }
     public int getReviewCount() { return reviewCount; }
+    public String getProfileImageUrl() { return profileImageUrl; }
 }

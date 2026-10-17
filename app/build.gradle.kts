@@ -126,6 +126,7 @@ dependencies {
     // Glide
     implementation(libs.glide)
     ksp(libs.glide.compiler)
+    implementation(libs.glide.compose)
 
     // RxJava Support
     implementation("io.reactivex.rxjava3:rxandroid:3.0.2")

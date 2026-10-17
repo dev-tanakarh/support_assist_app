@@ -34,7 +34,7 @@ public class TicketDetailsActivity extends AppCompatActivity {
     private EditText etComment;
     private ImageButton btnSendComment;
     private RatingBar rbRating;
-    private LinearLayout llCommentInput;
+    private View llCommentInput;
     private MaterialCardView cvAttachment;
     private ImageView ivAttachment;
 

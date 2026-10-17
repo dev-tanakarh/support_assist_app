@@ -24,13 +24,13 @@ class ProfileFragment : Fragment() {
     @Inject
     lateinit var tokenManager: TokenManager
 
+    private val viewModel: ProfileViewModel by viewModels()
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        val viewModel: ProfileViewModel by viewModels()
-
         return ComposeView(requireContext()).apply {
             setContent {
                 MaterialTheme {
@@ -50,11 +50,20 @@ class ProfileFragment : Fragment() {
                             ThemeManager.setMode(requireContext(), mode) // persists + applies the night-mode flag
                             activity?.recreate() // reloads values-night/ resources immediately, same as a real relaunch would
                         },
-                        onLogout = { logout() }
+                        onLogout = { logout() },
+                        onEditProfile = {
+                            val intent = Intent(requireContext(), EditProfileActivity::class.java)
+                            startActivity(intent)
+                        }
                     )
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        viewModel.refreshProfile()
     }
 
     private fun logout() {
