@@ -1,5 +1,6 @@
 package com.example.supportassist;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -10,13 +11,17 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.RatingBar;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.ContextCompat;
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.model.GlideUrl;
+import com.bumptech.glide.load.model.LazyHeaders;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import java.util.ArrayList;
@@ -29,14 +34,19 @@ import retrofit2.Response;
 
 public class TicketDetailsActivity extends AppCompatActivity {
 
+    private static final String TAG = "TicketDetails";
     private TextView tvId, tvSubject, tvStatus, tvPriority, tvDescription, tvDate, tvTechnician;
+    private TextView tvReporter, tvCategory, tvDepartment, tvRoom, tvDeviceType;
+    private ImageView ivReporterAvatar, ivTechnicianAvatar;
+    private RatingBar rbTechnicianRating;
     private LinearLayout llUpdatesContainer;
     private EditText etComment;
     private ImageButton btnSendComment;
     private RatingBar rbRating;
-    private View llCommentInput;
+    private ConstraintLayout llCommentInput;
     private MaterialCardView cvAttachment;
     private ImageView ivAttachment;
+    private ProgressBar progressBar;
 
     private LinearLayout llRoleActions, llResolveBlock, llAssignBlock;
     private MaterialButton btnAccept, btnResolve, btnAssign;
@@ -48,6 +58,8 @@ public class TicketDetailsActivity extends AppCompatActivity {
     private DataRepository repository;
     private TokenManager tokenManager;
     private String ticketId;
+    private boolean isUnassigned;
+    private boolean hasRetriedWithUnassigned = false;
     private Ticket currentTicket;
 
     @Override
@@ -66,6 +78,16 @@ public class TicketDetailsActivity extends AppCompatActivity {
         tvDescription = findViewById(R.id.tv_description);
         tvDate = findViewById(R.id.tv_submitted_date);
         tvTechnician = findViewById(R.id.tv_assigned_technician);
+        
+        tvReporter = findViewById(R.id.tv_reporter);
+        tvCategory = findViewById(R.id.tv_category);
+        tvDepartment = findViewById(R.id.tv_department);
+        tvRoom = findViewById(R.id.tv_room);
+        tvDeviceType = findViewById(R.id.tv_device_type);
+        ivReporterAvatar = findViewById(R.id.iv_reporter_avatar);
+        ivTechnicianAvatar = findViewById(R.id.iv_technician_avatar);
+        rbTechnicianRating = findViewById(R.id.rb_technician_profile_rating);
+
         llUpdatesContainer = findViewById(R.id.ll_updates_container);
         etComment = findViewById(R.id.et_comment);
         btnSendComment = findViewById(R.id.btn_send_comment);
@@ -73,6 +95,8 @@ public class TicketDetailsActivity extends AppCompatActivity {
         llCommentInput = findViewById(R.id.ll_comment_input);
         cvAttachment = findViewById(R.id.cv_attachment);
         ivAttachment = findViewById(R.id.iv_attachment);
+        
+        progressBar = findViewById(R.id.loading_indicator);
 
         llRoleActions = findViewById(R.id.ll_role_actions);
         btnAccept = findViewById(R.id.btn_accept);
@@ -90,10 +114,18 @@ public class TicketDetailsActivity extends AppCompatActivity {
         findViewById(R.id.btn_back).setOnClickListener(v -> finish());
 
         ticketId = getIntent().getStringExtra("ticket_id");
+        isUnassigned = getIntent().getBooleanExtra("is_unassigned", false);
+
+        Log.d(TAG, "Opening ticket: " + ticketId + ", isUnassigned flag: " + isUnassigned);
+
         if (ticketId != null) {
             Ticket cached = repository.getCachedTicketDetail(ticketId);
             if (cached != null) {
                 updateUI(cached);
+                // If cached ticket is unassigned and we are a tech/admin, force the flag
+                if (cached.isUnassigned() && (tokenManager.isTechnician() || tokenManager.isAdmin())) {
+                    isUnassigned = true;
+                }
             }
             fetchTicketDetails(ticketId);
         } else {
@@ -102,22 +134,58 @@ public class TicketDetailsActivity extends AppCompatActivity {
         }
 
         btnSendComment.setOnClickListener(v -> submitReview());
+        
+        cvAttachment.setOnClickListener(v -> {
+            if (currentTicket != null && currentTicket.getAttachmentUrl() != null) {
+                String fullUrl = ApiClient.getFullImageUrl(currentTicket.getAttachmentUrl());
+                Intent intent = new Intent(this, ImageViewerActivity.class);
+                intent.putExtra("image_url", fullUrl);
+                startActivity(intent);
+            }
+        });
     }
 
     private void fetchTicketDetails(String id) {
-        apiService.getTicketDetails(id).enqueue(new Callback<ApiResponse<Ticket>>() {
+        if (progressBar != null) progressBar.setVisibility(View.VISIBLE);
+        
+        Integer unassignedParam = isUnassigned ? 1 : null;
+        Log.d(TAG, "Fetching details for " + id + " (unassigned=" + unassignedParam + ")");
+        
+        apiService.getTicketDetails(id, unassignedParam).enqueue(new Callback<ApiResponse<Ticket>>() {
             @Override
             public void onResponse(Call<ApiResponse<Ticket>> call, Response<ApiResponse<Ticket>> response) {
-                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
-                    Ticket ticket = response.body().getData();
-                    repository.cacheTicketDetail(ticket);
-                    updateUI(ticket);
+                if (progressBar != null) progressBar.setVisibility(View.GONE);
+                
+                if (response.isSuccessful() && response.body() != null) {
+                    if (response.body().isSuccess()) {
+                        Ticket ticket = response.body().getData();
+                        if (ticket != null) {
+                            repository.cacheTicketDetail(ticket);
+                            updateUI(ticket);
+                        }
+                    } else {
+                        Toast.makeText(TicketDetailsActivity.this, "Error: " + response.body().getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                } else if (response.code() == 403 && !hasRetriedWithUnassigned && (tokenManager.isTechnician() || tokenManager.isAdmin())) {
+                    // SELF-HEALING: If we got a 403 and are a technician/admin, retry with unassigned=1 override
+                    Log.w(TAG, "Got 403, retrying with unassigned override...");
+                    hasRetriedWithUnassigned = true;
+                    isUnassigned = true;
+                    fetchTicketDetails(id);
+                } else {
+                    String message = ApiErrors.extractMessage(response, "Error loading ticket details");
+                    Toast.makeText(TicketDetailsActivity.this, message, Toast.LENGTH_LONG).show();
+                    if (response.code() == 403) {
+                        Log.e(TAG, "Permission Denied: " + message);
+                    }
                 }
             }
 
             @Override
             public void onFailure(Call<ApiResponse<Ticket>> call, Throwable t) {
-                Log.e("TicketDetails", "Error: " + t.getMessage());
+                if (progressBar != null) progressBar.setVisibility(View.GONE);
+                Log.e(TAG, "Network Error: " + t.getMessage());
+                Toast.makeText(TicketDetailsActivity.this, "Network Error", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -131,20 +199,77 @@ public class TicketDetailsActivity extends AppCompatActivity {
         tvDescription.setText(ticket.getDescription());
         tvDate.setText(ticket.getTimeAgo());
 
-        if (ticket.getAttachmentUrl() != null && !ticket.getAttachmentUrl().isEmpty()) {
-            cvAttachment.setVisibility(View.VISIBLE);
+        String token = tokenManager.getAccessToken();
+
+        // Load Reporter Avatar (prefer thumbnail)
+        if (ticket.getReporter() != null) {
+            String reporterInfo = ticket.getReporter().getName();
+            if (ticket.getReporter().getEmail() != null && !ticket.getReporter().getEmail().isEmpty()) {
+                reporterInfo += " (" + ticket.getReporter().getEmail() + ")";
+            }
+            tvReporter.setText(reporterInfo);
+            
+            String avatarPath = ticket.getReporter().getAvatarThumbnailUrl();
+            if (avatarPath == null || avatarPath.isEmpty()) {
+                avatarPath = ticket.getReporter().getProfileImageUrl();
+            }
+            
+            GlideUrl avatarUrl = ApiClient.getAuthenticatedGlideUrl(avatarPath, token);
             Glide.with(this)
-                    .load(ticket.getAttachmentUrl())
+                    .load(avatarUrl != null ? avatarUrl : R.drawable.ic_profile)
+                    .placeholder(R.drawable.ic_profile)
+                    .circleCrop()
+                    .into(ivReporterAvatar);
+        } else {
+            tvReporter.setText(R.string.unknown);
+            ivReporterAvatar.setImageResource(R.drawable.ic_profile);
+        }
+
+        tvCategory.setText(ticket.getCategory() != null ? ticket.getCategory().getName() : getString(R.string.general));
+        tvDepartment.setText(ticket.getDepartment() != null && !ticket.getDepartment().isEmpty() ? ticket.getDepartment() : getString(R.string.na));
+        tvRoom.setText(ticket.getRoom() != null && !ticket.getRoom().isEmpty() ? ticket.getRoom() : getString(R.string.na));
+        tvDeviceType.setText(ticket.getDeviceType() != null && !ticket.getDeviceType().isEmpty() ? ticket.getDeviceType() : getString(R.string.na));
+
+        // Load Attachment Image
+        String attachmentUrlString = ticket.getAttachmentUrl();
+        if (attachmentUrlString != null && !attachmentUrlString.isEmpty()) {
+            cvAttachment.setVisibility(View.VISIBLE);
+            GlideUrl glideUrl = ApiClient.getAuthenticatedGlideUrl(attachmentUrlString, token);
+            Glide.with(this)
+                    .load(glideUrl)
                     .placeholder(R.color.card_bg)
                     .into(ivAttachment);
         } else {
             cvAttachment.setVisibility(View.GONE);
         }
 
+        // Load Technician Avatar and Rating
         if (ticket.getAssignedTechnician() != null && ticket.getAssignedTechnician().getName() != null) {
-            tvTechnician.setText(ticket.getAssignedTechnician().getName());
+            User tech = ticket.getAssignedTechnician();
+            tvTechnician.setText(tech.getName());
+            
+            String avatarPath = tech.getAvatarThumbnailUrl();
+            if (avatarPath == null || avatarPath.isEmpty()) {
+                avatarPath = tech.getProfileImageUrl();
+            }
+            
+            GlideUrl avatarUrl = ApiClient.getAuthenticatedGlideUrl(avatarPath, token);
+            Glide.with(this)
+                    .load(avatarUrl != null ? avatarUrl : R.drawable.ic_profile)
+                    .placeholder(R.drawable.ic_profile)
+                    .circleCrop()
+                    .into(ivTechnicianAvatar);
+            
+            if (tech.getRating() != null) {
+                rbTechnicianRating.setRating(tech.getRating().floatValue());
+                rbTechnicianRating.setVisibility(View.VISIBLE);
+            } else {
+                rbTechnicianRating.setVisibility(View.GONE);
+            }
         } else {
             tvTechnician.setText(R.string.not_yet_assigned);
+            ivTechnicianAvatar.setImageResource(R.drawable.ic_profile);
+            rbTechnicianRating.setVisibility(View.GONE);
         }
 
         String status = ticket.getStatus();
@@ -211,24 +336,27 @@ public class TicketDetailsActivity extends AppCompatActivity {
 
     private void applyRoleActions(Ticket ticket) {
         String role = tokenManager.getUserType();
-        boolean isEndUser = "END_USER".equals(role) || role == null;
+        boolean isEndUser = "END_USER".equalsIgnoreCase(role) || role == null;
         llCommentInput.setVisibility(isEndUser ? View.VISIBLE : View.GONE);
 
         btnAccept.setVisibility(View.GONE);
         llResolveBlock.setVisibility(View.GONE);
         llAssignBlock.setVisibility(View.GONE);
 
-        boolean unassigned = ticket.getAssignedTechnician() == null;
+        boolean unassigned = ticket.isUnassigned();
 
-        if ("TECHNICIAN".equals(role)) {
-            boolean assignedToMe = !unassigned && ticket.getAssignedTechnician().getId() != null
+        if ("TECHNICIAN".equalsIgnoreCase(role)) {
+            boolean assignedToMe = !unassigned && ticket.getAssignedTechnician() != null 
+                    && ticket.getAssignedTechnician().getId() != null
                     && ticket.getAssignedTechnician().getId().equals(tokenManager.getUserId());
-            boolean canResolve = assignedToMe && "IN_PROGRESS".equalsIgnoreCase(ticket.getStatus());
+            
+            boolean canResolve = assignedToMe && !"RESOLVED".equalsIgnoreCase(ticket.getStatus()) 
+                    && !"CLOSED".equalsIgnoreCase(ticket.getStatus());
 
             btnAccept.setVisibility(unassigned ? View.VISIBLE : View.GONE);
             llResolveBlock.setVisibility(canResolve ? View.VISIBLE : View.GONE);
             llRoleActions.setVisibility(unassigned || canResolve ? View.VISIBLE : View.GONE);
-        } else if ("ADMIN".equals(role)) {
+        } else if ("ADMIN".equalsIgnoreCase(role)) {
             llAssignBlock.setVisibility(unassigned ? View.VISIBLE : View.GONE);
             llRoleActions.setVisibility(unassigned ? View.VISIBLE : View.GONE);
             if (unassigned) loadTechniciansForAssign();
@@ -267,6 +395,8 @@ public class TicketDetailsActivity extends AppCompatActivity {
                 btnAccept.setEnabled(true);
                 if (response.isSuccessful()) {
                     Toast.makeText(TicketDetailsActivity.this, R.string.ticket_updated, Toast.LENGTH_SHORT).show();
+                    // After accepting, the ticket is no longer unassigned
+                    isUnassigned = false;
                     fetchTicketDetails(ticketId);
                 } else {
                     Toast.makeText(TicketDetailsActivity.this, R.string.error_generic, Toast.LENGTH_SHORT).show();
@@ -327,6 +457,8 @@ public class TicketDetailsActivity extends AppCompatActivity {
                 btnAssign.setEnabled(true);
                 if (response.isSuccessful()) {
                     Toast.makeText(TicketDetailsActivity.this, R.string.ticket_updated, Toast.LENGTH_SHORT).show();
+                    // After assigning, the ticket is no longer unassigned
+                    isUnassigned = false;
                     fetchTicketDetails(ticketId);
                 } else {
                     Toast.makeText(TicketDetailsActivity.this, R.string.error_generic, Toast.LENGTH_SHORT).show();

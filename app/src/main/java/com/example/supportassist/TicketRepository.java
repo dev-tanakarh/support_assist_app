@@ -63,7 +63,7 @@ public class TicketRepository {
                 List<Ticket> tickets = new ArrayList<>();
                 for (TicketEntity e : cached) {
                     tickets.add(new Ticket(e.id, e.subject, e.description, e.status, e.priority,
-                            e.timeAgo, e.categoryName, e.assignedTechnicianName));
+                            e.timeAgo, e.categoryName, e.assignedTechnicianName, e.attachmentUrl));
                 }
                 callback.onSuccess(tickets);
             } catch (Exception e) {
@@ -86,7 +86,8 @@ public class TicketRepository {
                 t.getPriority(), 
                 t.getCategory() != null ? t.getCategory().getName() : null,
                 t.getTimeAgo(),
-                t.getAssignedTechnician() != null ? t.getAssignedTechnician().getName() : null
+                t.getAssignedTechnician() != null ? t.getAssignedTechnician().getName() : null,
+                t.getAttachmentUrl()
             ));
         }
         dbExecutor.execute(() -> {

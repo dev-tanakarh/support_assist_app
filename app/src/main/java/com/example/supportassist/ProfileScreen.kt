@@ -12,18 +12,22 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
+import com.bumptech.glide.load.model.GlideUrl
+import com.bumptech.glide.load.model.LazyHeaders
 
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable
@@ -42,6 +46,18 @@ fun ProfileScreen(
     val primaryBlue = colorResource(id = R.color.primary_blue)
     val textMain = colorResource(id = R.color.text_main)
     val textGrey = colorResource(id = R.color.text_grey)
+    
+    val context = LocalContext.current
+    val tokenManager = remember { TokenManager(context) }
+    
+    val profileGlideUrl = remember(user?.profileImageUrl) {
+        val fullUrl = ApiClient.getFullImageUrl(user?.profileImageUrl)
+        if (fullUrl != null) {
+            GlideUrl(fullUrl, LazyHeaders.Builder()
+                .addHeader("Authorization", "Bearer ${tokenManager.accessToken}")
+                .build())
+        } else null
+    }
 
     Box(
         modifier = Modifier
@@ -84,9 +100,9 @@ fun ProfileScreen(
                             .background(primaryBlue.copy(alpha = 0.1f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (user?.profileImageUrl != null) {
+                        if (profileGlideUrl != null) {
                             GlideImage(
-                                model = user.profileImageUrl,
+                                model = profileGlideUrl,
                                 contentDescription = "Profile Picture",
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop

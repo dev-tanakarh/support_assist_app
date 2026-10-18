@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
@@ -11,6 +12,9 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.model.GlideUrl;
+import com.bumptech.glide.load.model.LazyHeaders;
 import dagger.hilt.android.AndroidEntryPoint;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -28,6 +32,7 @@ public class TechnicianDashboardFragment extends Fragment {
 
     private ProgressBar progressBar;
     private TextView tvGreeting;
+    private ImageView ivProfileImage;
     private TextView tvStatUnassigned, tvStatActive, tvStatResolvedMonth;
     private RecyclerView rvUnassigned, rvMyActive;
     private TextView tvUnassignedEmpty, tvActiveEmpty;
@@ -40,6 +45,7 @@ public class TechnicianDashboardFragment extends Fragment {
 
         progressBar = view.findViewById(R.id.loading_indicator);
         tvGreeting = view.findViewById(R.id.tv_tech_greeting);
+        ivProfileImage = view.findViewById(R.id.iv_profile_image);
         tvStatUnassigned = view.findViewById(R.id.tv_stat_unassigned);
         tvStatActive = view.findViewById(R.id.tv_stat_active);
         tvStatResolvedMonth = view.findViewById(R.id.tv_stat_resolved_month);
@@ -49,6 +55,7 @@ public class TechnicianDashboardFragment extends Fragment {
         tvActiveEmpty = view.findViewById(R.id.tv_active_empty);
 
         unassignedAdapter = new TicketAdapter(new ArrayList<>());
+        unassignedAdapter.setUnassignedPool(true); // MARK: This adapter shows the unassigned pool
         rvUnassigned.setLayoutManager(new LinearLayoutManager(getContext()));
         rvUnassigned.setAdapter(unassignedAdapter);
 
@@ -62,14 +69,36 @@ public class TechnicianDashboardFragment extends Fragment {
             tvGreeting.setText("Hi, " + name);
         }
 
+        loadProfileImage();
         loadDashboard();
         return view;
+    }
+
+    private void loadProfileImage() {
+        User user = DataRepository.getInstance(requireContext()).getCachedProfile();
+        if (user != null && ivProfileImage != null) {
+            String imageUrl = ApiClient.getFullImageUrl(user.getProfileImageUrl());
+            if (imageUrl != null) {
+                String token = tokenManager.getAccessToken();
+                GlideUrl glideUrl = new GlideUrl(imageUrl, new LazyHeaders.Builder()
+                        .addHeader("Authorization", "Bearer " + token)
+                        .build());
+
+                Glide.with(this)
+                        .load(glideUrl)
+                        .placeholder(R.drawable.ic_profile)
+                        .error(R.drawable.ic_profile)
+                        .circleCrop()
+                        .into(ivProfileImage);
+            }
+        }
     }
 
     @Override
     public void onResume() {
         super.onResume();
         loadDashboard();
+        loadProfileImage();
     }
 
     private void loadDashboard() {

@@ -128,6 +128,9 @@ dependencies {
     ksp(libs.glide.compiler)
     implementation(libs.glide.compose)
 
+    // Image Processing
+    implementation(libs.androidx.exifinterface)
+
     // RxJava Support
     implementation("io.reactivex.rxjava3:rxandroid:3.0.2")
     implementation("io.reactivex.rxjava3:rxjava:3.1.8")

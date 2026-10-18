@@ -41,8 +41,8 @@ public interface ApiService {
     Call<ApiResponse<User>> updateProfile(@Body Map<String, String> body);
 
     @Multipart
-    @POST("profile/image")
-    Call<ApiResponse<User>> updateProfilePicture(@Part MultipartBody.Part image);
+    @POST("profile/avatar")
+    Call<ApiResponse<User>> updateProfilePicture(@Part MultipartBody.Part avatar);
 
     @GET("categories")
     Call<ApiResponse<List<Category>>> getCategories();
@@ -60,16 +60,15 @@ public interface ApiService {
     @GET("tickets/recent")
     Call<ApiResponse<List<Ticket>>> getRecentTickets(@Query("limit") Integer limit);
 
-    @GET("tickets/{id}")
-    Call<ApiResponse<Ticket>> getTicketDetails(@Path("id") String id);
-
     /**
-     * POST /api/tickets — must be multipart, not JSON, because `attachment` is a
-     * real file part. Every text field still has to be sent as its own @Part
-     * (a RequestBody with no filename) rather than bundled into a Map — Retrofit
-     * has no "@Body inside @Multipart" option. @attachment is nullable: omit the
-     * part entirely (don't pass an empty MultipartBody.Part) when there's no image.
+     * @param unassigned Set to 1 if fetching a ticket from the unassigned pool (technician/admin only).
      */
+    @GET("tickets/{id}")
+    Call<ApiResponse<Ticket>> getTicketDetails(
+            @Path("id") String id,
+            @Query("unassigned") Integer unassigned
+    );
+
     @Multipart
     @POST("tickets")
     Call<ApiResponse<Ticket>> createTicket(
@@ -95,30 +94,12 @@ public interface ApiService {
     @POST("alerts/{id}/read")
     Call<ApiResponse<Map<String, String>>> markAlertRead(@Path("id") int id);
 
-    /**
-     * Long-poll — see RUNNING.md on the backend for how this behaves. The call
-     * itself just blocks for up to `timeout` seconds; nothing special needed on
-     * the client beyond a generous Retrofit/OkHttp read timeout (see ApiClient).
-     */
     @GET("alerts/poll")
     Call<ApiResponse<AlertPollResponse>> pollAlerts(
             @Query("since") String since,
             @Query("timeout") Integer timeout
     );
 
-    // ---- Technician / Admin — added for role-based screens. Deliberately a
-    // separate method from getTickets() above rather than adding params to
-    // it: getTickets() feeds Paging3's RxPagingSource and changing its
-    // signature risks breaking that working flow for no benefit, since these
-    // callers don't need paging (technician/admin lists are small and just
-    // use per_page directly, matching how the web app already does it). ----
-
-    /**
-     * `unassigned=1` -> the unassigned pool (technician/admin only, backend-enforced).
-     * `unassigned=null` -> tickets scoped to the caller's role automatically:
-     * technician sees their own assigned tickets, admin sees everything.
-     * Same role-scoping the web app relies on — see routes.php's comment on GET /tickets.
-     */
     @GET("tickets")
     Call<ApiResponse<TicketsResponse>> getTicketsList(
             @Query("status") String status,
@@ -149,11 +130,9 @@ public interface ApiService {
     @DELETE("admin/technicians/{id}")
     Call<ApiResponse<Void>> deleteTechnician(@Path("id") String id);
 
-    /** {"isActive": true|false}. Admin-only, and the backend refuses to touch ADMIN accounts here — see AdminController::setUserStatus. */
     @PATCH("admin/users/{id}/status")
     Call<ApiResponse<Void>> setUserStatus(@Path("id") String id, @Body Map<String, Object> body);
 
-    /** Broadcasts to all END_USERs when `userId` is omitted from the body — see AdminController::sendAlert. */
     @POST("admin/alerts")
     Call<ApiResponse<Void>> sendAdminAlert(@Body Map<String, Object> body);
 }

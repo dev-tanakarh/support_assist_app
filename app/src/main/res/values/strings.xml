@@ -141,10 +141,16 @@
     <string name="add_a_comment">Add a comment...</string>
     <string name="assigned_technician">Assigned Technician</string>
     <string name="not_yet_assigned">Not yet assigned</string>
+    <string name="submitted_by">Submitted By</string>
+    <string name="device_type">Device Type</string>
+    <string name="unknown">Unknown</string>
+    <string name="na">N/A</string>
+    <string name="general">General</string>
 
     <!-- Notifications -->
     <string name="notifications">Notifications</string>
     <string name="mark_all_as_read">Mark all as read</string>
+    <string name="error_load_alerts">Failed to load alerts</string>
 
     <!-- Edit Profile -->
     <string name="edit_profile">Edit Profile</string>
@@ -156,4 +162,8 @@
     <string name="failed_to_upload_image">Failed to upload image</string>
     <string name="name_empty_error">Name cannot be empty</string>
     <string name="email_readonly">Email (Cannot be changed)</string>
+
+    <!-- Broadcast Dialog -->
+    <string name="broadcast_desc">Send a notification to all users in the system.</string>
+    <string name="send_now">Send Now</string>
 </resources>

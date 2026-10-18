@@ -3,26 +3,37 @@ package com.example.supportassist;
 import com.google.gson.annotations.SerializedName;
 
 public class User {
+    @SerializedName(value = "id", alternate = {"user_id"})
     private String id;
+    
+    @SerializedName("name")
     private String name;
+    
+    @SerializedName("email")
     private String email;
+    
+    @SerializedName("phone")
     private String phone;
-    @SerializedName("userType")
+    
+    @SerializedName(value = "user_type", alternate = {"userType", "role"})
     private String userType;
-    @SerializedName("isActive")
+    
+    @SerializedName(value = "is_active", alternate = {"isActive", "active"})
     private boolean isActive;
-    @SerializedName("createdAt")
+    
+    @SerializedName(value = "created_at", alternate = {"createdAt"})
     private String createdAt;
-    @SerializedName("profile_image_url")
+    
+    @SerializedName(value = "profile_image_url", alternate = {"profileImageUrl", "avatar", "avatarUrl", "profile_picture"})
     private String profileImageUrl;
 
-    // Only present in responses from GET /admin/users — see User::toPublicArray
-    // on the backend. Null/0 for every other response (login, profile, etc.),
-    // and for non-technicians even within that endpoint.
+    @SerializedName(value = "avatar_thumbnail_url", alternate = {"avatarThumbnailUrl", "profile_thumbnail"})
+    private String avatarThumbnailUrl;
+
     @SerializedName("rating")
     private Double rating;
 
-    @SerializedName("reviewCount")
+    @SerializedName(value = "review_count", alternate = {"reviewCount"})
     private int reviewCount;
 
     public User() { }
@@ -42,4 +53,5 @@ public class User {
     public Double getRating() { return rating; }
     public int getReviewCount() { return reviewCount; }
     public String getProfileImageUrl() { return profileImageUrl; }
+    public String getAvatarThumbnailUrl() { return avatarThumbnailUrl; }
 }

@@ -18,6 +18,8 @@ import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkInfo;
 import androidx.work.WorkManager;
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.model.GlideUrl;
+import com.bumptech.glide.load.model.LazyHeaders;
 import com.google.android.material.button.MaterialButton;
 import java.io.File;
 import java.util.HashMap;
@@ -38,6 +40,7 @@ public class EditProfileActivity extends AppCompatActivity {
     private MaterialButton btnSave;
     private ApiService apiService;
     private DataRepository repository;
+    private TokenManager tokenManager;
     private Uri selectedImageUri;
     private User currentUser;
 
@@ -58,6 +61,7 @@ public class EditProfileActivity extends AppCompatActivity {
 
         apiService = ApiClient.getApiService(this);
         repository = DataRepository.getInstance(this);
+        tokenManager = new TokenManager(this);
 
         etName = findViewById(R.id.et_name);
         etPhone = findViewById(R.id.et_phone);
@@ -76,8 +80,19 @@ public class EditProfileActivity extends AppCompatActivity {
             etName.setText(currentUser.getName());
             etPhone.setText(currentUser.getPhone());
             etEmail.setText(currentUser.getEmail());
-            if (currentUser.getProfileImageUrl() != null) {
-                Glide.with(this).load(currentUser.getProfileImageUrl()).placeholder(R.drawable.ic_profile).into(ivProfilePicture);
+            
+            String imageUrl = ApiClient.getFullImageUrl(currentUser.getProfileImageUrl());
+            if (imageUrl != null) {
+                String token = tokenManager.getAccessToken();
+                GlideUrl glideUrl = new GlideUrl(imageUrl, new LazyHeaders.Builder()
+                        .addHeader("Authorization", "Bearer " + token)
+                        .build());
+
+                Glide.with(this)
+                        .load(glideUrl)
+                        .placeholder(R.drawable.ic_profile)
+                        .error(R.drawable.ic_profile)
+                        .into(ivProfilePicture);
             }
         }
 
@@ -89,12 +104,12 @@ public class EditProfileActivity extends AppCompatActivity {
         String phone = etPhone.getText().toString().trim();
 
         if (name.isEmpty()) {
-            Toast.makeText(this, "Name cannot be empty", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.name_empty_error, Toast.LENGTH_SHORT).show();
             return;
         }
 
         btnSave.setEnabled(false);
-        btnSave.setText("Saving...");
+        btnSave.setText(R.string.saving);
 
         Map<String, String> body = new HashMap<>();
         body.put("name", name);
@@ -108,29 +123,33 @@ public class EditProfileActivity extends AppCompatActivity {
                     if (selectedImageUri != null) {
                         compressAndUploadImage();
                     } else {
-                        Toast.makeText(EditProfileActivity.this, "Profile Updated", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(EditProfileActivity.this, R.string.profile_updated, Toast.LENGTH_SHORT).show();
                         finish();
                     }
                 } else {
                     btnSave.setEnabled(true);
-                    btnSave.setText("Save Changes");
-                    Toast.makeText(EditProfileActivity.this, "Failed to update profile", Toast.LENGTH_SHORT).show();
+                    btnSave.setText(R.string.save_changes);
+                    Toast.makeText(EditProfileActivity.this, R.string.failed_to_update_profile, Toast.LENGTH_SHORT).show();
                 }
             }
 
             @Override
             public void onFailure(Call<ApiResponse<User>> call, Throwable t) {
                 btnSave.setEnabled(true);
-                btnSave.setText("Save Changes");
-                Toast.makeText(EditProfileActivity.this, "Network Error", Toast.LENGTH_SHORT).show();
+                btnSave.setText(R.string.save_changes);
+                Toast.makeText(EditProfileActivity.this, R.string.error_network, Toast.LENGTH_SHORT).show();
             }
         });
     }
 
     private void compressAndUploadImage() {
-        btnSave.setText("Uploading Image...");
+        btnSave.setText(R.string.uploading_image);
+        // Profile image target: 400x400 square (matches backend recommendation)
         Data inputData = new Data.Builder()
                 .putString("image_uri", selectedImageUri.toString())
+                .putInt("target_width", 400)
+                .putInt("target_height", 400)
+                .putBoolean("crop_square", true)
                 .build();
 
         OneTimeWorkRequest compressionRequest = new OneTimeWorkRequest.Builder(ImageCompressionWorker.class)
@@ -145,8 +164,8 @@ public class EditProfileActivity extends AppCompatActivity {
                         uploadImage(compressedPath);
                     } else if (workInfo != null && workInfo.getState() == WorkInfo.State.FAILED) {
                         btnSave.setEnabled(true);
-                        btnSave.setText("Save Changes");
-                        Toast.makeText(this, "Image compression failed", Toast.LENGTH_SHORT).show();
+                        btnSave.setText(R.string.save_changes);
+                        Toast.makeText(this, "Image processing failed", Toast.LENGTH_SHORT).show();
                     }
                 });
     }
@@ -154,27 +173,28 @@ public class EditProfileActivity extends AppCompatActivity {
     private void uploadImage(String path) {
         File file = new File(path);
         RequestBody requestFile = RequestBody.create(file, MediaType.parse("image/jpeg"));
-        MultipartBody.Part body = MultipartBody.Part.createFormData("image", file.getName(), requestFile);
+        // FIX: The backend expects the field key to be 'avatar' for profile pictures.
+        MultipartBody.Part body = MultipartBody.Part.createFormData("avatar", "profile.jpg", requestFile);
 
         apiService.updateProfilePicture(body).enqueue(new Callback<ApiResponse<User>>() {
             @Override
             public void onResponse(Call<ApiResponse<User>> call, Response<ApiResponse<User>> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     repository.cacheProfile(response.body().getData());
-                    Toast.makeText(EditProfileActivity.this, "Profile Updated", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(EditProfileActivity.this, R.string.profile_updated, Toast.LENGTH_SHORT).show();
                     finish();
                 } else {
                     btnSave.setEnabled(true);
-                    btnSave.setText("Save Changes");
-                    Toast.makeText(EditProfileActivity.this, "Failed to upload image", Toast.LENGTH_SHORT).show();
+                    btnSave.setText(R.string.save_changes);
+                    Toast.makeText(EditProfileActivity.this, R.string.failed_to_upload_image, Toast.LENGTH_SHORT).show();
                 }
             }
 
             @Override
             public void onFailure(Call<ApiResponse<User>> call, Throwable t) {
                 btnSave.setEnabled(true);
-                btnSave.setText("Save Changes");
-                Toast.makeText(EditProfileActivity.this, "Network Error", Toast.LENGTH_SHORT).show();
+                btnSave.setText(R.string.save_changes);
+                Toast.makeText(EditProfileActivity.this, R.string.error_network, Toast.LENGTH_SHORT).show();
             }
         });
     }

@@ -7,6 +7,7 @@
     android:background="@color/bg_color">
 
     <androidx.core.widget.NestedScrollView
+        android:id="@+id/nsv_content"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:fillViewport="true"
@@ -151,12 +152,147 @@
                 </LinearLayout>
 
                 <LinearLayout
+                    android:id="@+id/ll_reporter"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:orientation="vertical"
+                    app:layout_constraintTop_toBottomOf="@+id/ll_info">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/submitted_by"
+                        android:textColor="@color/text_grey"
+                        android:textSize="12sp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.imageview.ShapeableImageView
+                            android:id="@+id/iv_reporter_avatar"
+                            android:layout_width="32dp"
+                            android:layout_height="32dp"
+                            android:scaleType="centerCrop"
+                            android:src="@drawable/ic_profile"
+                            app:shapeAppearanceOverlay="@style/CircleImage"
+                            app:strokeColor="@color/divider_color"
+                            app:strokeWidth="1dp" />
+
+                        <TextView
+                            android:id="@+id/tv_reporter"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="12dp"
+                            android:textColor="@color/text_main"
+                            android:textSize="14sp"
+                            tools:text="John Doe (john@example.com)" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <GridLayout
+                    android:id="@+id/gl_additional_info"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:columnCount="2"
+                    app:layout_constraintTop_toBottomOf="@+id/ll_reporter">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_columnWeight="1"
+                        android:layout_marginEnd="8dp"
+                        android:orientation="vertical">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/category"
+                            android:textColor="@color/text_grey"
+                            android:textSize="12sp" />
+                        <TextView
+                            android:id="@+id/tv_category"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/text_main"
+                            android:textSize="14sp"
+                            tools:text="Hardware" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_columnWeight="1"
+                        android:orientation="vertical">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/department"
+                            android:textColor="@color/text_grey"
+                            android:textSize="12sp" />
+                        <TextView
+                            android:id="@+id/tv_department"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/text_main"
+                            android:textSize="14sp"
+                            tools:text="Sales" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_columnWeight="1"
+                        android:layout_marginTop="12dp"
+                        android:layout_marginEnd="8dp"
+                        android:orientation="vertical">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/room"
+                            android:textColor="@color/text_grey"
+                            android:textSize="12sp" />
+                        <TextView
+                            android:id="@+id/tv_room"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/text_main"
+                            android:textSize="14sp"
+                            tools:text="101" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_columnWeight="1"
+                        android:layout_marginTop="12dp"
+                        android:orientation="vertical">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/device_type"
+                            android:textColor="@color/text_grey"
+                            android:textSize="12sp" />
+                        <TextView
+                            android:id="@+id/tv_device_type"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/text_main"
+                            android:textSize="14sp"
+                            tools:text="Laptop" />
+                    </LinearLayout>
+                </GridLayout>
+
+                <LinearLayout
                     android:id="@+id/ll_technician"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="24dp"
                     android:orientation="vertical"
-                    app:layout_constraintTop_toBottomOf="@+id/ll_info">
+                    app:layout_constraintTop_toBottomOf="@+id/gl_additional_info">
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -174,20 +310,47 @@
                         android:gravity="center_vertical"
                         android:padding="12dp">
 
-                        <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
+                        <com.google.android.material.imageview.ShapeableImageView
+                            android:id="@+id/iv_technician_avatar"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:scaleType="centerCrop"
                             android:src="@drawable/ic_profile"
-                            app:tint="@color/primary_blue" />
+                            app:shapeAppearanceOverlay="@style/CircleImage"
+                            app:strokeColor="@color/divider_color"
+                            app:strokeWidth="1dp" />
 
-                        <TextView
-                            android:id="@+id/tv_assigned_technician"
-                            android:layout_width="wrap_content"
+                        <LinearLayout
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
+                            android:layout_weight="1"
                             android:layout_marginStart="12dp"
-                            android:text="@string/not_yet_assigned"
-                            android:textColor="@color/text_main"
-                            android:textSize="14sp" />
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tv_assigned_technician"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/not_yet_assigned"
+                                android:textColor="@color/text_main"
+                                android:textSize="14sp"
+                                android:textStyle="bold" />
+
+                            <androidx.appcompat.widget.AppCompatRatingBar
+                                android:id="@+id/rb_technician_profile_rating"
+                                style="?android:attr/ratingBarStyleSmall"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:isIndicator="true"
+                                android:numStars="5"
+                                android:stepSize="0.1"
+                                android:visibility="gone"
+                                android:progressTint="@color/rating_star_yellow"
+                                android:secondaryProgressTint="@color/rating_star_yellow"
+                                tools:visibility="visible"
+                                tools:rating="4.5" />
+                        </LinearLayout>
                     </LinearLayout>
                 </LinearLayout>
 
@@ -340,6 +503,16 @@
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.core.widget.NestedScrollView>
 
+    <ProgressBar
+        android:id="@+id/loading_indicator"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/ll_comment_input"
         android:layout_width="match_parent"
@@ -357,16 +530,21 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintWidth_max="600dp">
 
-            <RatingBar
+            <androidx.appcompat.widget.AppCompatRatingBar
                 android:id="@+id/rb_rating"
-                style="?android:attr/ratingBarStyleSmall"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="8dp"
+                android:layout_marginBottom="-18dp"
                 android:isIndicator="false"
                 android:numStars="5"
                 android:rating="5"
-                android:stepSize="1" />
+                android:stepSize="1"
+                android:scaleX="0.32"
+                android:scaleY="0.32"
+                android:transformPivotX="0dp"
+                android:transformPivotY="24dp"
+                app:progressTint="@color/rating_star_yellow"
+                app:secondaryProgressTint="@color/rating_star_yellow" />
 
             <LinearLayout
                 android:layout_width="match_parent"

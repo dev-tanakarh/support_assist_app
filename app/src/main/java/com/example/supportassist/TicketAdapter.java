@@ -4,18 +4,30 @@ import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.model.GlideUrl;
+import com.bumptech.glide.load.model.LazyHeaders;
 import java.util.List;
 
 public class TicketAdapter extends RecyclerView.Adapter<TicketAdapter.TicketViewHolder> {
 
     private List<Ticket> tickets;
+    private boolean isUnassignedPool = false;
 
     public TicketAdapter(List<Ticket> tickets) {
         this.tickets = tickets;
+    }
+
+    /** 
+     * Explicitly marks this adapter as showing the unassigned pool.
+     */
+    public void setUnassignedPool(boolean unassignedPool) {
+        this.isUnassignedPool = unassignedPool;
     }
 
     /** Swap in a fresh list without recreating the adapter/RecyclerView state. */
@@ -43,10 +55,7 @@ public class TicketAdapter extends RecyclerView.Adapter<TicketAdapter.TicketView
         
         holder.tvPriority.setText(ticket.getPriority());
 
-        // Set status colors. Matched against the backend's actual enum values
-        // (OPEN / IN_PROGRESS / RESOLVED / CLOSED) — this used to compare
-        // against "In Progress" (space, title case), which never matched
-        // "IN_PROGRESS" and silently mis-colored every in-progress ticket.
+        // Set status colors
         String status = ticket.getStatus();
         if (status != null) {
             if (status.equalsIgnoreCase("OPEN")) {
@@ -64,7 +73,7 @@ public class TicketAdapter extends RecyclerView.Adapter<TicketAdapter.TicketView
             }
         }
 
-        // Priority already matched correctly (HIGH/MEDIUM/LOW have no case-vs-underscore mismatch), left as-is.
+        // Set priority colors
         if (ticket.getPriority() != null) {
             String priority = ticket.getPriority();
             if (priority.equalsIgnoreCase("High")) {
@@ -79,13 +88,40 @@ public class TicketAdapter extends RecyclerView.Adapter<TicketAdapter.TicketView
             }
         }
 
-        holder.itemView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(v.getContext(), TicketDetailsActivity.class);
-                intent.putExtra("ticket_id", ticket.getId());
-                v.getContext().startActivity(intent);
-            }
+        // Handle Attachment Thumbnail
+        String imageUrl = ApiClient.getFullImageUrl(ticket.getAttachmentUrl());
+        TokenManager tokenManager = new TokenManager(holder.itemView.getContext());
+        String token = tokenManager.getAccessToken();
+
+        if (imageUrl != null) {
+            holder.ivThumbnail.setVisibility(View.VISIBLE);
+            
+            GlideUrl glideUrl = new GlideUrl(imageUrl, new LazyHeaders.Builder()
+                    .addHeader("Authorization", "Bearer " + token)
+                    .build());
+
+            Glide.with(holder.itemView.getContext())
+                    .load(glideUrl)
+                    .placeholder(R.color.card_bg)
+                    .error(R.drawable.ic_logo) 
+                    .centerCrop()
+                    .into(holder.ivThumbnail);
+        } else {
+            holder.ivThumbnail.setVisibility(View.GONE);
+        }
+
+        holder.itemView.setOnClickListener(v -> {
+            Intent intent = new Intent(v.getContext(), TicketDetailsActivity.class);
+            intent.putExtra("ticket_id", ticket.getId());
+            
+            // Auto-detect if we need to request unassigned access (for Technicians/Admins)
+            boolean isTechOrAdmin = tokenManager.isTechnician() || tokenManager.isAdmin();
+            
+            // Pass true if it's explicitly from the unassigned pool or if auto-detected as unassigned
+            boolean shouldPassUnassigned = isUnassignedPool || (ticket.isUnassigned() && isTechOrAdmin);
+            intent.putExtra("is_unassigned", shouldPassUnassigned);
+
+            v.getContext().startActivity(intent);
         });
     }
 
@@ -96,11 +132,12 @@ public class TicketAdapter extends RecyclerView.Adapter<TicketAdapter.TicketView
 
     @Override
     public int getItemCount() {
-        return tickets.size();
+        return tickets != null ? tickets.size() : 0;
     }
 
     public static class TicketViewHolder extends RecyclerView.ViewHolder {
         TextView tvId, tvSubject, tvStatus, tvTime, tvPriority;
+        ImageView ivThumbnail;
 
         public TicketViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -109,6 +146,7 @@ public class TicketAdapter extends RecyclerView.Adapter<TicketAdapter.TicketView
             tvStatus = itemView.findViewById(R.id.tv_status);
             tvTime = itemView.findViewById(R.id.tv_time);
             tvPriority = itemView.findViewById(R.id.tv_priority);
+            ivThumbnail = itemView.findViewById(R.id.iv_ticket_thumbnail);
         }
     }
 }

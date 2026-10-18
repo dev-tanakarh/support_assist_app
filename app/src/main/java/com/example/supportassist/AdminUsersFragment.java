@@ -1,6 +1,5 @@
 package com.example.supportassist;
 
-import android.app.AlertDialog;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -13,9 +12,11 @@ import android.widget.Spinner;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import dagger.hilt.android.AndroidEntryPoint;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -106,8 +107,6 @@ public class AdminUsersFragment extends Fragment {
             public void onResponse(Call<ApiResponse<Void>> call, Response<ApiResponse<Void>> response) {
                 if (!isAdded()) return;
                 if (!response.isSuccessful()) {
-                    // Revert by reloading — e.g. the backend refused because
-                    // this was an ADMIN row that slipped through some race.
                     Toast.makeText(getContext(), ApiErrors.extractMessage(response, getString(R.string.error_generic)), Toast.LENGTH_LONG).show();
                     int pos = spTypeFilter.getSelectedItemPosition();
                     loadUsers(pos >= 0 ? typeValues[pos] : typeValues[0]);
@@ -122,7 +121,7 @@ public class AdminUsersFragment extends Fragment {
     }
 
     private void confirmRemoveTechnician(User technician) {
-        new AlertDialog.Builder(requireContext())
+        new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(technician.getName())
                 .setMessage(R.string.admin_confirm_remove_technician)
                 .setPositiveButton(android.R.string.ok, (dialog, which) -> removeTechnician(technician))
@@ -157,7 +156,7 @@ public class AdminUsersFragment extends Fragment {
         EditText etPhone = form.findViewById(R.id.et_tech_phone);
         EditText etPassword = form.findViewById(R.id.et_tech_password);
 
-        new AlertDialog.Builder(requireContext())
+        new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.admin_add_technician)
                 .setView(form)
                 .setPositiveButton(R.string.admin_add_technician, (dialog, which) -> {
@@ -206,24 +205,28 @@ public class AdminUsersFragment extends Fragment {
         View form = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_broadcast_alert, null);
         EditText etTitle = form.findViewById(R.id.et_alert_title);
         EditText etMessage = form.findViewById(R.id.et_alert_message);
+        View btnSend = form.findViewById(R.id.btn_send);
+        View btnCancel = form.findViewById(R.id.btn_cancel);
 
-        new AlertDialog.Builder(requireContext())
-                .setTitle(R.string.admin_broadcast_alert)
+        AlertDialog dialog = new MaterialAlertDialogBuilder(requireContext())
                 .setView(form)
-                .setPositiveButton(R.string.admin_broadcast_alert, (dialog, which) -> {
-                    String title = etTitle.getText().toString().trim();
-                    if (title.isEmpty()) {
-                        Toast.makeText(getContext(), R.string.error_fill_required, Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    sendBroadcastAlert(title, etMessage.getText().toString().trim());
-                })
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
+                .create();
+
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+        btnSend.setOnClickListener(v -> {
+            String title = etTitle.getText().toString().trim();
+            if (title.isEmpty()) {
+                Toast.makeText(getContext(), R.string.error_fill_required, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            sendBroadcastAlert(title, etMessage.getText().toString().trim());
+            dialog.dismiss();
+        });
+
+        dialog.show();
     }
 
     private void sendBroadcastAlert(String title, String message) {
-        // No `userId` in the body -> AdminController::sendAlert broadcasts to every END_USER.
         Map<String, Object> body = new HashMap<>();
         body.put("title", title);
         if (!message.isEmpty()) body.put("message", message);

@@ -30,4 +30,6 @@
     <color name="nav_inactive">#94A3B8</color>
     <color name="profile_card">#FFFFFF</color>
     <color name="stat_value">#0F172A</color>
+
+    <color name="rating_star_yellow">#FFC107</color>
 </resources>

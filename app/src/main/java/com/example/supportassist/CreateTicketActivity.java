@@ -113,10 +113,14 @@ public class CreateTicketActivity extends AppCompatActivity {
 
     private void compressAndSubmit() {
         btnSubmit.setEnabled(false);
-        btnSubmit.setText("Compressing Image...");
+        btnSubmit.setText("Processing Image...");
 
+        // Attachment target: Max 1280x720 to save bandwidth while remaining clear
         Data inputData = new Data.Builder()
                 .putString("image_uri", selectedImageUri.toString())
+                .putInt("target_width", 1280)
+                .putInt("target_height", 720)
+                .putBoolean("crop_square", false)
                 .build();
 
         OneTimeWorkRequest compressionRequest = new OneTimeWorkRequest.Builder(ImageCompressionWorker.class)
@@ -132,7 +136,7 @@ public class CreateTicketActivity extends AppCompatActivity {
                     } else if (workInfo != null && workInfo.getState() == WorkInfo.State.FAILED) {
                         btnSubmit.setEnabled(true);
                         btnSubmit.setText("Submit Ticket");
-                        Toast.makeText(this, "Compression failed", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, "Image processing failed", Toast.LENGTH_SHORT).show();
                     }
                 });
     }
@@ -223,9 +227,6 @@ public class CreateTicketActivity extends AppCompatActivity {
 
         int categoryId = categoryList.get(spCategory.getSelectedItemPosition()).getId();
 
-        // Every non-file field of a multipart request is still its own part —
-        // Retrofit has no "@Body inside @Multipart" escape hatch, so this can't
-        // be a single Map the way a JSON request could.
         RequestBody subjectBody = textPart(subject);
         RequestBody descriptionBody = textPart(description);
         RequestBody categoryBody = textPart(String.valueOf(categoryId));
@@ -238,9 +239,7 @@ public class CreateTicketActivity extends AppCompatActivity {
         if (compressedImagePath != null) {
             File imageFile = new File(compressedImagePath);
             RequestBody fileBody = RequestBody.create(imageFile, MediaType.parse("image/jpeg"));
-            // Field name here MUST be "attachment" — it's what the backend's
-            // FileUpload::storeImage() reads via $request->file('attachment').
-            attachmentPart = MultipartBody.Part.createFormData("attachment", imageFile.getName(), fileBody);
+            attachmentPart = MultipartBody.Part.createFormData("attachment", "attachment.jpg", fileBody);
         }
 
         apiService.createTicket(subjectBody, descriptionBody, categoryBody, priorityBody, departmentBody, deviceBody, roomBody, attachmentPart)

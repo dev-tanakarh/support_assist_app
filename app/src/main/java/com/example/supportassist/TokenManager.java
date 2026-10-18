@@ -25,7 +25,6 @@ public class TokenManager {
                 .apply();
     }
 
-    /** Called right after login/signup so role-based UI never needs an extra round trip just to find out who's logged in. */
     public void saveUser(User user) {
         if (user == null) return;
         prefs.edit()
@@ -52,14 +51,24 @@ public class TokenManager {
         return prefs.getString(KEY_USER_NAME, null);
     }
 
-    /** "END_USER", "TECHNICIAN", or "ADMIN" — see User::toPublicArray on the backend. Null if never saved (shouldn't happen post-login). */
     public String getUserType() {
         return prefs.getString(KEY_USER_TYPE, null);
     }
 
-    public boolean isTechnician() { return "TECHNICIAN".equals(getUserType()); }
-    public boolean isAdmin() { return "ADMIN".equals(getUserType()); }
-    public boolean isEndUser() { return "END_USER".equals(getUserType()); }
+    public boolean isTechnician() { 
+        String type = getUserType();
+        return type != null && type.equalsIgnoreCase("TECHNICIAN"); 
+    }
+    
+    public boolean isAdmin() { 
+        String type = getUserType();
+        return type != null && type.equalsIgnoreCase("ADMIN"); 
+    }
+    
+    public boolean isEndUser() { 
+        String type = getUserType();
+        return type != null && type.equalsIgnoreCase("END_USER"); 
+    }
 
     public void clear() {
         prefs.edit().clear().apply();

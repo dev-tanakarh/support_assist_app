@@ -1,16 +1,24 @@
 package com.example.supportassist.paging;
 
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
 import androidx.paging.PagingDataAdapter;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.model.GlideUrl;
+import com.bumptech.glide.load.model.LazyHeaders;
+import com.example.supportassist.ApiClient;
 import com.example.supportassist.R;
 import com.example.supportassist.Ticket;
+import com.example.supportassist.TicketDetailsActivity;
+import com.example.supportassist.TokenManager;
 
 public class TicketPagingAdapter extends PagingDataAdapter<Ticket, TicketPagingAdapter.TicketViewHolder> {
 
@@ -48,6 +56,7 @@ public class TicketPagingAdapter extends PagingDataAdapter<Ticket, TicketPagingA
 
     public static class TicketViewHolder extends RecyclerView.ViewHolder {
         TextView tvId, tvSubject, tvStatus, tvTime, tvPriority;
+        ImageView ivThumbnail;
 
         public TicketViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -56,29 +65,86 @@ public class TicketPagingAdapter extends PagingDataAdapter<Ticket, TicketPagingA
             tvStatus = itemView.findViewById(R.id.tv_status);
             tvTime = itemView.findViewById(R.id.tv_time);
             tvPriority = itemView.findViewById(R.id.tv_priority);
+            ivThumbnail = itemView.findViewById(R.id.iv_ticket_thumbnail);
         }
 
         public void bind(Ticket ticket) {
             tvId.setText(ticket.getId());
             tvSubject.setText(ticket.getSubject());
-            tvStatus.setText(ticket.getStatus());
+            tvStatus.setText(statusLabel(ticket.getStatus()));
             tvTime.setText(ticket.getTimeAgo());
             tvPriority.setText(ticket.getPriority());
 
-            // High-performance theme-aware color logic
+            // Status Colors
             if (ticket.getStatus() != null) {
                 String status = ticket.getStatus();
-                if (status.equalsIgnoreCase("Open")) {
+                if (status.equalsIgnoreCase("OPEN")) {
                     tvStatus.setBackgroundResource(R.drawable.status_open_bg);
                     tvStatus.setTextColor(ContextCompat.getColor(itemView.getContext(), R.color.status_open_text));
-                } else if (status.equalsIgnoreCase("In Progress")) {
+                } else if (status.equalsIgnoreCase("IN_PROGRESS")) {
                     tvStatus.setBackgroundResource(R.drawable.status_progress_bg);
                     tvStatus.setTextColor(ContextCompat.getColor(itemView.getContext(), R.color.status_progress_text));
+                } else if (status.equalsIgnoreCase("RESOLVED")) {
+                    tvStatus.setBackgroundResource(R.drawable.status_resolved_bg);
+                    tvStatus.setTextColor(ContextCompat.getColor(itemView.getContext(), R.color.status_resolved_text));
                 } else {
                     tvStatus.setBackgroundResource(R.drawable.status_closed_bg);
                     tvStatus.setTextColor(ContextCompat.getColor(itemView.getContext(), R.color.white));
                 }
             }
+
+            // Priority Colors
+            if (ticket.getPriority() != null) {
+                String priority = ticket.getPriority();
+                if (priority.equalsIgnoreCase("High")) {
+                    tvPriority.setBackgroundResource(R.drawable.priority_high_bg);
+                    tvPriority.setTextColor(ContextCompat.getColor(itemView.getContext(), R.color.priority_high_text));
+                } else if (priority.equalsIgnoreCase("Medium")) {
+                    tvPriority.setBackgroundResource(R.drawable.priority_medium_bg);
+                    tvPriority.setTextColor(ContextCompat.getColor(itemView.getContext(), R.color.priority_medium_text));
+                } else if (priority.equalsIgnoreCase("Low")) {
+                    tvPriority.setBackgroundResource(R.drawable.priority_low_bg);
+                    tvPriority.setTextColor(ContextCompat.getColor(itemView.getContext(), R.color.priority_low_text));
+                }
+            }
+
+            // Handle Attachment Thumbnail
+            String imageUrl = ApiClient.getFullImageUrl(ticket.getAttachmentUrl());
+            TokenManager tokenManager = new TokenManager(itemView.getContext());
+            String token = tokenManager.getAccessToken();
+            
+            if (imageUrl != null && ivThumbnail != null) {
+                ivThumbnail.setVisibility(View.VISIBLE);
+                
+                GlideUrl glideUrl = new GlideUrl(imageUrl, new LazyHeaders.Builder()
+                        .addHeader("Authorization", "Bearer " + token)
+                        .build());
+
+                Glide.with(itemView.getContext())
+                        .load(glideUrl)
+                        .placeholder(R.color.card_bg)
+                        .error(R.drawable.ic_logo)
+                        .centerCrop()
+                        .into(ivThumbnail);
+            } else if (ivThumbnail != null) {
+                ivThumbnail.setVisibility(View.GONE);
+            }
+
+            itemView.setOnClickListener(v -> {
+                Intent intent = new Intent(v.getContext(), TicketDetailsActivity.class);
+                intent.putExtra("ticket_id", ticket.getId());
+                
+                // Auto-detect if we need to request unassigned access
+                boolean isTechOrAdmin = tokenManager.isTechnician() || tokenManager.isAdmin();
+                intent.putExtra("is_unassigned", ticket.isUnassigned() && isTechOrAdmin);
+
+                v.getContext().startActivity(intent);
+            });
+        }
+
+        private String statusLabel(String status) {
+            if (status == null) return "";
+            return status.replace('_', ' ');
         }
     }
 }

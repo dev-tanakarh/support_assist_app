@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -12,6 +13,9 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.model.GlideUrl;
+import com.bumptech.glide.load.model.LazyHeaders;
 import dagger.hilt.android.AndroidEntryPoint;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +33,7 @@ public class AdminDashboardFragment extends Fragment {
 
     private ProgressBar progressBar;
     private TextView tvGreeting;
+    private ImageView ivAdminAvatar;
     private TextView tvTotal, tvOverdue, tvAvgResolution;
     private LinearLayout llByStatus, llByPriority, llTopTechnicians;
     private RecyclerView rvRecentTickets;
@@ -41,6 +46,7 @@ public class AdminDashboardFragment extends Fragment {
 
         progressBar = view.findViewById(R.id.loading_indicator);
         tvGreeting = view.findViewById(R.id.tv_admin_greeting);
+        ivAdminAvatar = view.findViewById(R.id.iv_admin_avatar);
         tvTotal = view.findViewById(R.id.tv_stat_total);
         tvOverdue = view.findViewById(R.id.tv_stat_overdue);
         tvAvgResolution = view.findViewById(R.id.tv_stat_avg_resolution);
@@ -57,9 +63,30 @@ public class AdminDashboardFragment extends Fragment {
         if (name == null || name.isEmpty()) name = "Admin";
         tvGreeting.setText(getString(R.string.hi_user, name));
 
+        loadProfileImage();
         loadDashboard();
         loadRecentTickets();
         return view;
+    }
+
+    private void loadProfileImage() {
+        User user = DataRepository.getInstance(requireContext()).getCachedProfile();
+        if (user != null && ivAdminAvatar != null) {
+            String imageUrl = ApiClient.getFullImageUrl(user.getProfileImageUrl());
+            if (imageUrl != null) {
+                String token = tokenManager.getAccessToken();
+                GlideUrl glideUrl = new GlideUrl(imageUrl, new LazyHeaders.Builder()
+                        .addHeader("Authorization", "Bearer " + token)
+                        .build());
+
+                Glide.with(this)
+                        .load(glideUrl)
+                        .placeholder(R.drawable.ic_profile)
+                        .error(R.drawable.ic_profile)
+                        .circleCrop()
+                        .into(ivAdminAvatar);
+            }
+        }
     }
 
     @Override
@@ -67,6 +94,7 @@ public class AdminDashboardFragment extends Fragment {
         super.onResume();
         loadDashboard();
         loadRecentTickets();
+        loadProfileImage();
     }
 
     private void loadDashboard() {

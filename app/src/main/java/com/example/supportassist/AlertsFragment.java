@@ -7,6 +7,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
@@ -28,6 +29,12 @@ public class AlertsFragment extends Fragment {
     private AlertAdapter adapter;
     private List<Alert> alertsList = new ArrayList<>();
     private ApiService apiService;
+    private ProgressBar progressBar;
+    
+    private int currentPage = 1;
+    private boolean isLoading = false;
+    private boolean isLastPage = false;
+    private static final int PAGE_SIZE = 20;
 
     @Nullable
     @Override
@@ -35,6 +42,7 @@ public class AlertsFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_alerts, container, false);
 
         apiService = ApiClient.getApiService(getContext());
+        progressBar = view.findViewById(R.id.loading_indicator);
 
         ImageButton btnBack = view.findViewById(R.id.btn_back_alerts);
         btnBack.setOnClickListener(v -> {
@@ -44,13 +52,32 @@ public class AlertsFragment extends Fragment {
         });
 
         rvAlerts = view.findViewById(R.id.rv_alerts);
-        rvAlerts.setLayoutManager(new LinearLayoutManager(getContext()));
+        LinearLayoutManager layoutManager = new LinearLayoutManager(getContext());
+        rvAlerts.setLayoutManager(layoutManager);
 
         adapter = new AlertAdapter(alertsList);
         rvAlerts.setAdapter(adapter);
 
         adapter.setOnAlertClickListener((alert, position) -> {
             showAlertDetails(alert);
+        });
+
+        rvAlerts.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+                int visibleItemCount = layoutManager.getChildCount();
+                int totalItemCount = layoutManager.getItemCount();
+                int firstVisibleItemPosition = layoutManager.findFirstVisibleItemPosition();
+
+                if (!isLoading && !isLastPage) {
+                    if ((visibleItemCount + firstVisibleItemPosition) >= totalItemCount
+                            && firstVisibleItemPosition >= 0
+                            && totalItemCount >= PAGE_SIZE) {
+                        fetchAlerts();
+                    }
+                }
+            }
         });
 
         fetchAlerts();
@@ -89,13 +116,30 @@ public class AlertsFragment extends Fragment {
     }
 
     private void fetchAlerts() {
-        apiService.getAlerts(1, 50).enqueue(new Callback<ApiResponse<List<Alert>>>() {
+        isLoading = true;
+        if (progressBar != null) progressBar.setVisibility(View.VISIBLE);
+
+        apiService.getAlerts(currentPage, PAGE_SIZE).enqueue(new Callback<ApiResponse<List<Alert>>>() {
             @Override
             public void onResponse(Call<ApiResponse<List<Alert>>> call, Response<ApiResponse<List<Alert>>> response) {
+                isLoading = false;
+                if (progressBar != null) progressBar.setVisibility(View.GONE);
+
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
-                    alertsList.clear();
-                    alertsList.addAll(response.body().getData());
-                    adapter.notifyDataSetChanged();
+                    List<Alert> newData = response.body().getData();
+                    if (newData != null) {
+                        if (currentPage == 1) {
+                            alertsList.clear();
+                        }
+                        alertsList.addAll(newData);
+                        adapter.notifyDataSetChanged();
+                        
+                        if (newData.size() < PAGE_SIZE) {
+                            isLastPage = true;
+                        } else {
+                            currentPage++;
+                        }
+                    }
                 } else {
                     Toast.makeText(getContext(), "Failed to load alerts", Toast.LENGTH_SHORT).show();
                 }
@@ -103,6 +147,8 @@ public class AlertsFragment extends Fragment {
 
             @Override
             public void onFailure(Call<ApiResponse<List<Alert>>> call, Throwable t) {
+                isLoading = false;
+                if (progressBar != null) progressBar.setVisibility(View.GONE);
                 Log.e("AlertsFragment", "Error: " + t.getMessage());
                 Toast.makeText(getContext(), "Network Error", Toast.LENGTH_SHORT).show();
             }
@@ -114,6 +160,8 @@ public class AlertsFragment extends Fragment {
             @Override
             public void onResponse(Call<ApiResponse<Map<String, String>>> call, Response<ApiResponse<Map<String, String>>> response) {
                 if (response.isSuccessful()) {
+                    currentPage = 1;
+                    isLastPage = false;
                     fetchAlerts();
                 }
             }

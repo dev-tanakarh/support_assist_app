@@ -32,9 +32,13 @@ public class TicketEntity {
     @Nullable
     public String assignedTechnicianName;
 
+    @Nullable
+    public String attachmentUrl;
+
     public TicketEntity(@NonNull String id, @Nullable String subject, @Nullable String description, 
                         @Nullable String status, @Nullable String priority, @Nullable String categoryName, 
-                        @Nullable String timeAgo, @Nullable String assignedTechnicianName) {
+                        @Nullable String timeAgo, @Nullable String assignedTechnicianName,
+                        @Nullable String attachmentUrl) {
         this.id = id;
         this.subject = subject;
         this.description = description;
@@ -43,5 +47,6 @@ public class TicketEntity {
         this.categoryName = categoryName;
         this.timeAgo = timeAgo;
         this.assignedTechnicianName = assignedTechnicianName;
+        this.attachmentUrl = attachmentUrl;
     }
 }

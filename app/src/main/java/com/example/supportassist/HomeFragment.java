@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -12,6 +13,9 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import android.widget.ProgressBar;
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.model.GlideUrl;
+import com.bumptech.glide.load.model.LazyHeaders;
 import com.example.supportassist.viewmodel.TicketViewModel;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +36,7 @@ public class HomeFragment extends Fragment {
     private List<Ticket> recentTicketsList = new ArrayList<>();
     private ProgressBar progressBar;
     private TextView tvGreeting;
+    private ImageView ivProfileImage;
     private TextView tvStatOpen, tvStatInProgress, tvStatResolved;
     private TicketViewModel viewModel;
 
@@ -43,6 +48,7 @@ public class HomeFragment extends Fragment {
         viewModel = new ViewModelProvider(this).get(TicketViewModel.class);
 
         tvGreeting = view.findViewById(R.id.tv_greeting);
+        ivProfileImage = view.findViewById(R.id.iv_profile_image);
         rvRecentTickets = view.findViewById(R.id.rv_recent_tickets);
         progressBar = view.findViewById(R.id.loading_indicator);
         tvStatOpen = view.findViewById(R.id.tv_stat_open_value);
@@ -57,6 +63,7 @@ public class HomeFragment extends Fragment {
         if (name == null || name.isEmpty()) name = "User";
         tvGreeting.setText(getString(R.string.hi_user, name));
 
+        loadProfileImage();
         observeViewModel();
         loadStats();
 
@@ -67,6 +74,26 @@ public class HomeFragment extends Fragment {
         });
 
         return view;
+    }
+
+    private void loadProfileImage() {
+        User user = DataRepository.getInstance(requireContext()).getCachedProfile();
+        if (user != null) {
+            String imageUrl = ApiClient.getFullImageUrl(user.getProfileImageUrl());
+            if (imageUrl != null) {
+                String token = tokenManager.getAccessToken();
+                GlideUrl glideUrl = new GlideUrl(imageUrl, new LazyHeaders.Builder()
+                        .addHeader("Authorization", "Bearer " + token)
+                        .build());
+
+                Glide.with(this)
+                        .load(glideUrl)
+                        .placeholder(R.drawable.ic_profile)
+                        .error(R.drawable.ic_profile)
+                        .circleCrop()
+                        .into(ivProfileImage);
+            }
+        }
     }
 
     private void observeViewModel() {
@@ -81,7 +108,7 @@ public class HomeFragment extends Fragment {
         });
 
         viewModel.loading.observe(getViewLifecycleOwner(), isLoading -> {
-            progressBar.setVisibility(isLoading ? View.VISIBLE : View.GONE);
+            if (progressBar != null) progressBar.setVisibility(isLoading ? View.VISIBLE : View.GONE);
         });
     }
 

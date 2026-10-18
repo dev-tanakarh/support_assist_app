@@ -8,6 +8,9 @@ import android.widget.Switch;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.model.GlideUrl;
+import com.bumptech.glide.load.model.LazyHeaders;
 import java.util.List;
 
 public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder> {
@@ -49,6 +52,26 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
         holder.tvEmail.setText(user.getEmail());
         holder.tvType.setText(user.getUserType());
 
+        // Handle Profile Image
+        String imageUrl = ApiClient.getFullImageUrl(user.getProfileImageUrl());
+        if (imageUrl != null) {
+            TokenManager tokenManager = new TokenManager(holder.itemView.getContext());
+            String token = tokenManager.getAccessToken();
+
+            GlideUrl glideUrl = new GlideUrl(imageUrl, new LazyHeaders.Builder()
+                    .addHeader("Authorization", "Bearer " + token)
+                    .build());
+
+            Glide.with(holder.itemView.getContext())
+                    .load(glideUrl)
+                    .placeholder(R.drawable.ic_profile)
+                    .error(R.drawable.ic_profile)
+                    .circleCrop()
+                    .into(holder.ivAvatar);
+        } else {
+            holder.ivAvatar.setImageResource(R.drawable.ic_profile);
+        }
+
         boolean isTechnician = "TECHNICIAN".equals(user.getUserType());
         holder.ivRemove.setVisibility(isTechnician ? View.VISIBLE : View.GONE);
         holder.ivRemove.setOnClickListener(v -> {
@@ -81,7 +104,7 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
 
     static class UserViewHolder extends RecyclerView.ViewHolder {
         TextView tvName, tvEmail, tvType, tvRating;
-        ImageView ivRemove;
+        ImageView ivRemove, ivAvatar;
         Switch swActive;
 
         UserViewHolder(@NonNull View itemView) {
@@ -91,6 +114,7 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
             tvType = itemView.findViewById(R.id.tv_user_type);
             tvRating = itemView.findViewById(R.id.tv_user_rating);
             ivRemove = itemView.findViewById(R.id.iv_remove_technician);
+            ivAvatar = itemView.findViewById(R.id.iv_user_avatar);
             swActive = itemView.findViewById(R.id.sw_active);
         }
     }

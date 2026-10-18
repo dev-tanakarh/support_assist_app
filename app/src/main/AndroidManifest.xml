@@ -34,6 +34,7 @@
         <activity android:name=".CreateTicketActivity" android:exported="false" />
         <activity android:name=".TicketDetailsActivity" android:exported="false" />
         <activity android:name=".EditProfileActivity" android:exported="false" />
+        <activity android:name=".ImageViewerActivity" android:exported="false" />
 
         <service
             android:name=".MyFirebaseMessagingService"
