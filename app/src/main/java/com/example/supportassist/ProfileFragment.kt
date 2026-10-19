@@ -31,10 +31,16 @@ class ProfileFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
+        // Observe logout success to navigate away
+        viewModel.logoutSuccess.observe(viewLifecycleOwner) { success ->
+            if (success) {
+                performLocalLogout()
+            }
+        }
+
         return ComposeView(requireContext()).apply {
             setContent {
                 MaterialTheme {
-                    // Observe LiveData as State for Compose reactivity
                     val userState by viewModel.user.observeAsState()
                     val totalState by viewModel.totalTickets.observeAsState(0)
                     val resolvedState by viewModel.resolvedTickets.observeAsState(0)
@@ -46,11 +52,11 @@ class ProfileFragment : Fragment() {
                         resolvedTickets = resolvedState,
                         currentThemeMode = themeMode,
                         onThemeChange = { mode ->
-                            themeMode = mode // instant pill-highlight update
-                            ThemeManager.setMode(requireContext(), mode) // persists + applies the night-mode flag
-                            activity?.recreate() // reloads values-night/ resources immediately, same as a real relaunch would
+                            themeMode = mode
+                            ThemeManager.setMode(requireContext(), mode)
+                            activity?.recreate()
                         },
-                        onLogout = { logout() },
+                        onLogout = { viewModel.logout() }, // Stage 2: Attempt server revocation
                         onEditProfile = {
                             val intent = Intent(requireContext(), EditProfileActivity::class.java)
                             startActivity(intent)
@@ -66,9 +72,9 @@ class ProfileFragment : Fragment() {
         viewModel.refreshProfile()
     }
 
-    private fun logout() {
+    private fun performLocalLogout() {
         tokenManager.clear()
-        DataRepository.getInstance(requireContext()).clearCache()
+        DataRepository.getInstance(requireContext()).clearCache(requireContext())
         val intent = Intent(activity, LoginActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)

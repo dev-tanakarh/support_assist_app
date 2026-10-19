@@ -15,15 +15,21 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import java.util.HashMap;
 import java.util.Map;
+import javax.inject.Inject;
+import dagger.hilt.android.AndroidEntryPoint;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
+@AndroidEntryPoint
 public class SignupActivity extends AppCompatActivity {
 
     private static final String TAG = "SignupActivity";
-    private ApiService apiService;
-    private TokenManager tokenManager;
+    
+    @Inject ApiService apiService;
+    @Inject TokenManager tokenManager;
+    @Inject UserRepository userRepository;
+    
     private ProgressBar progressBar;
     private Button btnSignup;
 
@@ -32,8 +38,6 @@ public class SignupActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_signup);
 
-        apiService = ApiClient.getApiService(this);
-        tokenManager = new TokenManager(this);
         progressBar = findViewById(R.id.pb_signup);
 
         final EditText etName = findViewById(R.id.et_name);
@@ -113,8 +117,6 @@ public class SignupActivity extends AppCompatActivity {
         body.put("phone", phone);
         body.put("password", password);
 
-        Log.d(TAG, "Attempting signup at: " + ApiClient.getBaseUrl());
-
         apiService.signup(body).enqueue(new Callback<ApiResponse<LoginResponse>>() {
             @Override
             public void onResponse(Call<ApiResponse<LoginResponse>> call, Response<ApiResponse<LoginResponse>> response) {
@@ -122,7 +124,9 @@ public class SignupActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                     LoginResponse data = response.body().getData();
                     tokenManager.saveTokens(data.getAccessToken(), data.getRefreshToken());
-                    tokenManager.saveUser(data.getUser());
+                    
+                    // Unified save ensures data is available for ProfileFragment immediately
+                    userRepository.saveProfileLocally(data.getUser());
                     
                     Toast.makeText(SignupActivity.this, "Signup Successful!", Toast.LENGTH_SHORT).show();
                     Intent intent = new Intent(SignupActivity.this, MainActivity.class);
@@ -130,7 +134,6 @@ public class SignupActivity extends AppCompatActivity {
                     startActivity(intent);
                 } else {
                     String message = ApiErrors.extractMessage(response, "Signup Failed");
-                    Log.e(TAG, "Signup failed: " + message);
                     Toast.makeText(SignupActivity.this, message, Toast.LENGTH_LONG).show();
                 }
             }
@@ -138,8 +141,7 @@ public class SignupActivity extends AppCompatActivity {
             @Override
             public void onFailure(Call<ApiResponse<LoginResponse>> call, Throwable t) {
                 setLoading(false);
-                Log.e(TAG, "Network Error: " + t.getMessage(), t);
-                Toast.makeText(SignupActivity.this, "Connection Error: Check if backend is running on " + ApiClient.getBaseUrl(), Toast.LENGTH_LONG).show();
+                Toast.makeText(SignupActivity.this, "Network Error", Toast.LENGTH_LONG).show();
             }
         });
     }

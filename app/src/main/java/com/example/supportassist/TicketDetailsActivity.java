@@ -5,8 +5,8 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -19,31 +19,55 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.ContextCompat;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.model.GlideUrl;
 import com.bumptech.glide.load.model.LazyHeaders;
+import com.example.supportassist.viewmodel.TicketViewModel;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import javax.inject.Inject;
+import dagger.hilt.android.AndroidEntryPoint;
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class TicketDetailsActivity extends AppCompatActivity {
+@AndroidEntryPoint
+public class TicketDetailsActivity extends AppCompatActivity implements WebSocketManager.MessageListener {
 
     private static final String TAG = "TicketDetails";
-    private TextView tvId, tvSubject, tvStatus, tvPriority, tvDescription, tvDate, tvTechnician;
+    
+    @Inject ApiService apiService;
+    @Inject TokenManager tokenManager;
+    @Inject WebSocketManager webSocketManager;
+
+    private TextView tvId, tvSubject, tvStatus, tvPriority, tvDescription, tvDate, tvTechnician, tvDueDate;
     private TextView tvReporter, tvCategory, tvDepartment, tvRoom, tvDeviceType;
     private ImageView ivReporterAvatar, ivTechnicianAvatar;
     private RatingBar rbTechnicianRating;
     private LinearLayout llUpdatesContainer;
+    
+    private RecyclerView rvMessages;
+    private MessageAdapter messageAdapter;
+    private TextView tvEmptyMessages;
+    private ConstraintLayout llMessageInput;
+    private EditText etMessage;
+    private ImageButton btnSendMessage;
+    private CheckBox cbInternalNote;
+
+    private RatingBar rbRating;
     private EditText etComment;
     private ImageButton btnSendComment;
-    private RatingBar rbRating;
     private ConstraintLayout llCommentInput;
+    
     private MaterialCardView cvAttachment;
     private ImageView ivAttachment;
     private ProgressBar progressBar;
@@ -54,31 +78,100 @@ public class TicketDetailsActivity extends AppCompatActivity {
     private Spinner spAssignTechnician;
     private List<User> assignableTechnicians = new ArrayList<>();
 
-    private ApiService apiService;
-    private DataRepository repository;
-    private TokenManager tokenManager;
     private String ticketId;
     private boolean isUnassigned;
-    private boolean hasRetriedWithUnassigned = false;
     private Ticket currentTicket;
+    private TicketViewModel viewModel;
+    private final CompositeDisposable disposables = new CompositeDisposable();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_ticket_details);
 
-        apiService = ApiClient.getApiService(this);
-        repository = DataRepository.getInstance(this);
-        tokenManager = new TokenManager(this);
+        viewModel = new ViewModelProvider(this).get(TicketViewModel.class);
 
+        initViews();
+        setupRecyclerView();
+
+        ticketId = getIntent().getStringExtra("ticket_id");
+        isUnassigned = getIntent().getBooleanExtra("is_unassigned", false);
+
+        if (ticketId != null) {
+            observeTicketData();
+            observeMessages();
+            
+            viewModel.refreshTicketDetail(ticketId, isUnassigned ? 1 : null);
+            viewModel.refreshMessages(ticketId);
+            
+            // Subscribe to real-time updates
+            webSocketManager.addListener(this);
+            webSocketManager.subscribe(ticketId);
+        } else {
+            Toast.makeText(this, "Error: Ticket ID not found", Toast.LENGTH_SHORT).show();
+            finish();
+        }
+
+        btnSendMessage.setOnClickListener(v -> postMessage());
+        btnSendComment.setOnClickListener(v -> submitReview());
+        
+        btnAccept.setOnClickListener(v -> acceptTicket());
+        btnResolve.setOnClickListener(v -> resolveTicket());
+        btnAssign.setOnClickListener(v -> assignTicket());
+        
+        cvAttachment.setOnClickListener(v -> {
+            if (currentTicket != null) {
+                String fullUrl = ApiClient.getBaseUrl() + "tickets/" + ticketId + "/attachment?variant=full";
+                Intent intent = new Intent(this, ImageViewerActivity.class);
+                intent.putExtra("image_url", fullUrl);
+                startActivity(intent);
+            }
+        });
+
+        findViewById(R.id.btn_back).setOnClickListener(v -> finish());
+    }
+
+    private void observeTicketData() {
+        disposables.add(viewModel.getTicketDetails(ticketId)
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(ticket -> {
+                    if (ticket != null) {
+                        updateUI(ticket);
+                    }
+                }, throwable -> Log.e(TAG, "Error observing ticket", throwable)));
+    }
+
+    private void observeMessages() {
+        disposables.add(viewModel.getTicketMessages(ticketId)
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(messages -> {
+                    messageAdapter.setMessages(messages != null ? messages : new ArrayList<>());
+                    tvEmptyMessages.setVisibility(messages == null || messages.isEmpty() ? View.VISIBLE : View.GONE);
+                    if (messages != null && !messages.isEmpty()) {
+                        rvMessages.scrollToPosition(messages.size() - 1);
+                    }
+                }, throwable -> Log.e(TAG, "Error observing messages", throwable)));
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (ticketId != null) {
+            webSocketManager.unsubscribe(ticketId);
+            webSocketManager.removeListener(this);
+        }
+        disposables.dispose();
+        super.onDestroy();
+    }
+
+    private void initViews() {
         tvId = findViewById(R.id.tv_ticket_id);
         tvSubject = findViewById(R.id.tv_subject);
         tvStatus = findViewById(R.id.tv_status_tag);
         tvPriority = findViewById(R.id.tv_priority_tag);
         tvDescription = findViewById(R.id.tv_description);
         tvDate = findViewById(R.id.tv_submitted_date);
+        tvDueDate = findViewById(R.id.tv_due_date);
         tvTechnician = findViewById(R.id.tv_assigned_technician);
-        
         tvReporter = findViewById(R.id.tv_reporter);
         tvCategory = findViewById(R.id.tv_category);
         tvDepartment = findViewById(R.id.tv_department);
@@ -87,15 +180,21 @@ public class TicketDetailsActivity extends AppCompatActivity {
         ivReporterAvatar = findViewById(R.id.iv_reporter_avatar);
         ivTechnicianAvatar = findViewById(R.id.iv_technician_avatar);
         rbTechnicianRating = findViewById(R.id.rb_technician_profile_rating);
-
         llUpdatesContainer = findViewById(R.id.ll_updates_container);
+
+        rvMessages = findViewById(R.id.rv_messages);
+        tvEmptyMessages = findViewById(R.id.tv_empty_messages);
+        llMessageInput = findViewById(R.id.ll_message_input);
+        etMessage = findViewById(R.id.et_message);
+        btnSendMessage = findViewById(R.id.btn_send_message);
+        cbInternalNote = findViewById(R.id.cb_internal_note);
+
         etComment = findViewById(R.id.et_comment);
         btnSendComment = findViewById(R.id.btn_send_comment);
         rbRating = findViewById(R.id.rb_rating);
         llCommentInput = findViewById(R.id.ll_comment_input);
         cvAttachment = findViewById(R.id.cv_attachment);
         ivAttachment = findViewById(R.id.iv_attachment);
-        
         progressBar = findViewById(R.id.loading_indicator);
 
         llRoleActions = findViewById(R.id.ll_role_actions);
@@ -106,88 +205,61 @@ public class TicketDetailsActivity extends AppCompatActivity {
         llAssignBlock = findViewById(R.id.ll_assign_block);
         spAssignTechnician = findViewById(R.id.sp_assign_technician);
         btnAssign = findViewById(R.id.btn_assign);
+    }
 
-        btnAccept.setOnClickListener(v -> acceptTicket());
-        btnResolve.setOnClickListener(v -> resolveTicket());
-        btnAssign.setOnClickListener(v -> assignTicket());
+    private void setupRecyclerView() {
+        messageAdapter = new MessageAdapter(tokenManager.getUserId(), tokenManager);
+        LinearLayoutManager layoutManager = new LinearLayoutManager(this);
+        layoutManager.setStackFromEnd(true);
+        rvMessages.setLayoutManager(layoutManager);
+        rvMessages.setAdapter(messageAdapter);
+    }
 
-        findViewById(R.id.btn_back).setOnClickListener(v -> finish());
+    private void postMessage() {
+        String bodyText = etMessage.getText().toString().trim();
+        if (bodyText.isEmpty()) return;
 
-        ticketId = getIntent().getStringExtra("ticket_id");
-        isUnassigned = getIntent().getBooleanExtra("is_unassigned", false);
+        btnSendMessage.setEnabled(false);
+        Map<String, Object> body = new HashMap<>();
+        body.put("body", bodyText);
+        body.put("isInternal", cbInternalNote.isChecked());
 
-        Log.d(TAG, "Opening ticket: " + ticketId + ", isUnassigned flag: " + isUnassigned);
-
-        if (ticketId != null) {
-            Ticket cached = repository.getCachedTicketDetail(ticketId);
-            if (cached != null) {
-                updateUI(cached);
-                // If cached ticket is unassigned and we are a tech/admin, force the flag
-                if (cached.isUnassigned() && (tokenManager.isTechnician() || tokenManager.isAdmin())) {
-                    isUnassigned = true;
+        apiService.postTicketMessage(ticketId, body).enqueue(new Callback<ApiResponse<Message>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<Message>> call, Response<ApiResponse<Message>> response) {
+                btnSendMessage.setEnabled(true);
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    etMessage.setText("");
+                    // No need to manually add message, Repository/Room will pick up real-time update or manual sync
+                    viewModel.refreshMessages(ticketId);
+                } else {
+                    String error = ApiErrors.extractMessage(response, "Failed to send message");
+                    Toast.makeText(TicketDetailsActivity.this, error, Toast.LENGTH_SHORT).show();
                 }
             }
-            fetchTicketDetails(ticketId);
-        } else {
-            Toast.makeText(this, "Error: Ticket ID not found", Toast.LENGTH_SHORT).show();
-            finish();
-        }
-
-        btnSendComment.setOnClickListener(v -> submitReview());
-        
-        cvAttachment.setOnClickListener(v -> {
-            if (currentTicket != null && currentTicket.getAttachmentUrl() != null) {
-                String fullUrl = ApiClient.getFullImageUrl(currentTicket.getAttachmentUrl());
-                Intent intent = new Intent(this, ImageViewerActivity.class);
-                intent.putExtra("image_url", fullUrl);
-                startActivity(intent);
+            @Override public void onFailure(Call<ApiResponse<Message>> call, Throwable t) {
+                btnSendMessage.setEnabled(true);
+                Toast.makeText(TicketDetailsActivity.this, R.string.error_network, Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    private void fetchTicketDetails(String id) {
-        if (progressBar != null) progressBar.setVisibility(View.VISIBLE);
+    @Override
+    public void onMessageCreated(String tId, Message message) {
+        if (message == null || (tId != null && !tId.equals(ticketId))) return;
         
-        Integer unassignedParam = isUnassigned ? 1 : null;
-        Log.d(TAG, "Fetching details for " + id + " (unassigned=" + unassignedParam + ")");
-        
-        apiService.getTicketDetails(id, unassignedParam).enqueue(new Callback<ApiResponse<Ticket>>() {
-            @Override
-            public void onResponse(Call<ApiResponse<Ticket>> call, Response<ApiResponse<Ticket>> response) {
-                if (progressBar != null) progressBar.setVisibility(View.GONE);
-                
-                if (response.isSuccessful() && response.body() != null) {
-                    if (response.body().isSuccess()) {
-                        Ticket ticket = response.body().getData();
-                        if (ticket != null) {
-                            repository.cacheTicketDetail(ticket);
-                            updateUI(ticket);
-                        }
-                    } else {
-                        Toast.makeText(TicketDetailsActivity.this, "Error: " + response.body().getMessage(), Toast.LENGTH_SHORT).show();
-                    }
-                } else if (response.code() == 403 && !hasRetriedWithUnassigned && (tokenManager.isTechnician() || tokenManager.isAdmin())) {
-                    // SELF-HEALING: If we got a 403 and are a technician/admin, retry with unassigned=1 override
-                    Log.w(TAG, "Got 403, retrying with unassigned override...");
-                    hasRetriedWithUnassigned = true;
-                    isUnassigned = true;
-                    fetchTicketDetails(id);
-                } else {
-                    String message = ApiErrors.extractMessage(response, "Error loading ticket details");
-                    Toast.makeText(TicketDetailsActivity.this, message, Toast.LENGTH_LONG).show();
-                    if (response.code() == 403) {
-                        Log.e(TAG, "Permission Denied: " + message);
-                    }
-                }
-            }
+        // Safety check for internal notes visibility
+        if (message.isInternal() && !tokenManager.isTechnician() && !tokenManager.isAdmin()) {
+            return;
+        }
 
-            @Override
-            public void onFailure(Call<ApiResponse<Ticket>> call, Throwable t) {
-                if (progressBar != null) progressBar.setVisibility(View.GONE);
-                Log.e(TAG, "Network Error: " + t.getMessage());
-                Toast.makeText(TicketDetailsActivity.this, "Network Error", Toast.LENGTH_SHORT).show();
-            }
-        });
+        // We use repository sync for stability, but could add manually for extra speed
+        runOnUiThread(() -> viewModel.refreshMessages(ticketId));
+    }
+
+    @Override
+    public void onConnectionStateChanged(boolean connected) {
+        Log.d(TAG, "WS Connection: " + (connected ? "Connected" : "Disconnected"));
     }
 
     private void updateUI(Ticket ticket) {
@@ -198,73 +270,72 @@ public class TicketDetailsActivity extends AppCompatActivity {
         tvSubject.setText(ticket.getSubject());
         tvDescription.setText(ticket.getDescription());
         tvDate.setText(ticket.getTimeAgo());
+        
+        tvCategory.setText(getFieldValue(ticket.getCategory() != null ? ticket.getCategory().getName() : null));
+        tvDepartment.setText(getFieldValue(ticket.getDepartment()));
+        tvRoom.setText(getFieldValue(ticket.getRoom()));
+        tvDeviceType.setText(getFieldValue(ticket.getDeviceType()));
+        updatePriorityUI(ticket.getPriority());
+
+        if (ticket.getDueAt() != null) {
+            tvDueDate.setVisibility(View.VISIBLE);
+            tvDueDate.setText(getString(R.string.due_date_format, ticket.getDueAt()));
+            tvDueDate.setTextColor(ticket.isOverdue() ? ContextCompat.getColor(this, R.color.priority_high_text) : ContextCompat.getColor(this, R.color.text_grey));
+        } else {
+            tvDueDate.setVisibility(View.GONE);
+        }
 
         String token = tokenManager.getAccessToken();
 
-        // Load Reporter Avatar (prefer thumbnail)
+        // Load Reporter
         if (ticket.getReporter() != null) {
-            String reporterInfo = ticket.getReporter().getName();
-            if (ticket.getReporter().getEmail() != null && !ticket.getReporter().getEmail().isEmpty()) {
-                reporterInfo += " (" + ticket.getReporter().getEmail() + ")";
-            }
-            tvReporter.setText(reporterInfo);
-            
+            tvReporter.setText(ticket.getReporter().getName());
             String avatarPath = ticket.getReporter().getAvatarThumbnailUrl();
-            if (avatarPath == null || avatarPath.isEmpty()) {
-                avatarPath = ticket.getReporter().getProfileImageUrl();
-            }
+            if (avatarPath == null || avatarPath.isEmpty()) avatarPath = ticket.getReporter().getProfileImageUrl();
             
             GlideUrl avatarUrl = ApiClient.getAuthenticatedGlideUrl(avatarPath, token);
             Glide.with(this)
                     .load(avatarUrl != null ? avatarUrl : R.drawable.ic_profile)
                     .placeholder(R.drawable.ic_profile)
+                    .error(R.drawable.ic_profile)
                     .circleCrop()
                     .into(ivReporterAvatar);
-        } else {
-            tvReporter.setText(R.string.unknown);
-            ivReporterAvatar.setImageResource(R.drawable.ic_profile);
         }
 
-        tvCategory.setText(ticket.getCategory() != null ? ticket.getCategory().getName() : getString(R.string.general));
-        tvDepartment.setText(ticket.getDepartment() != null && !ticket.getDepartment().isEmpty() ? ticket.getDepartment() : getString(R.string.na));
-        tvRoom.setText(ticket.getRoom() != null && !ticket.getRoom().isEmpty() ? ticket.getRoom() : getString(R.string.na));
-        tvDeviceType.setText(ticket.getDeviceType() != null && !ticket.getDeviceType().isEmpty() ? ticket.getDeviceType() : getString(R.string.na));
-
-        // Load Attachment Image
-        String attachmentUrlString = ticket.getAttachmentUrl();
-        if (attachmentUrlString != null && !attachmentUrlString.isEmpty()) {
+        // Secure Attachment (Thumbnail)
+        if (ticket.getAttachmentUrl() != null && !ticket.getAttachmentUrl().isEmpty()) {
             cvAttachment.setVisibility(View.VISIBLE);
-            GlideUrl glideUrl = ApiClient.getAuthenticatedGlideUrl(attachmentUrlString, token);
+            String secureThumbUrl = ApiClient.getBaseUrl() + "tickets/" + ticket.getId() + "/attachment?variant=thumbnail";
+            GlideUrl glideUrl = new GlideUrl(secureThumbUrl, new LazyHeaders.Builder()
+                    .addHeader("Authorization", "Bearer " + token)
+                    .build());
             Glide.with(this)
                     .load(glideUrl)
                     .placeholder(R.color.card_bg)
+                    .error(R.drawable.ic_logo)
                     .into(ivAttachment);
         } else {
             cvAttachment.setVisibility(View.GONE);
         }
 
-        // Load Technician Avatar and Rating
+        // Load Technician
         if (ticket.getAssignedTechnician() != null && ticket.getAssignedTechnician().getName() != null) {
             User tech = ticket.getAssignedTechnician();
             tvTechnician.setText(tech.getName());
-            
             String avatarPath = tech.getAvatarThumbnailUrl();
-            if (avatarPath == null || avatarPath.isEmpty()) {
-                avatarPath = tech.getProfileImageUrl();
-            }
+            if (avatarPath == null || avatarPath.isEmpty()) avatarPath = tech.getProfileImageUrl();
             
             GlideUrl avatarUrl = ApiClient.getAuthenticatedGlideUrl(avatarPath, token);
             Glide.with(this)
                     .load(avatarUrl != null ? avatarUrl : R.drawable.ic_profile)
                     .placeholder(R.drawable.ic_profile)
+                    .error(R.drawable.ic_profile)
                     .circleCrop()
                     .into(ivTechnicianAvatar);
             
             if (tech.getRating() != null) {
                 rbTechnicianRating.setRating(tech.getRating().floatValue());
                 rbTechnicianRating.setVisibility(View.VISIBLE);
-            } else {
-                rbTechnicianRating.setVisibility(View.GONE);
             }
         } else {
             tvTechnician.setText(R.string.not_yet_assigned);
@@ -272,97 +343,145 @@ public class TicketDetailsActivity extends AppCompatActivity {
             rbTechnicianRating.setVisibility(View.GONE);
         }
 
-        String status = ticket.getStatus();
-        tvStatus.setText(statusLabel(status));
-        if (status != null) {
-            if (status.equalsIgnoreCase("OPEN")) {
-                tvStatus.setBackgroundResource(R.drawable.status_open_bg);
-                tvStatus.setTextColor(ContextCompat.getColor(this, R.color.status_open_text));
-            } else if (status.equalsIgnoreCase("IN_PROGRESS")) {
-                tvStatus.setBackgroundResource(R.drawable.status_progress_bg);
-                tvStatus.setTextColor(ContextCompat.getColor(this, R.color.status_progress_text));
-            } else if (status.equalsIgnoreCase("RESOLVED")) {
-                tvStatus.setBackgroundResource(R.drawable.status_resolved_bg);
-                tvStatus.setTextColor(ContextCompat.getColor(this, R.color.status_resolved_text));
-            } else {
-                tvStatus.setBackgroundResource(R.drawable.status_closed_bg);
-                tvStatus.setTextColor(ContextCompat.getColor(this, R.color.white));
-            }
-        }
-
-        String priority = ticket.getPriority();
-        tvPriority.setText(priority);
-        if (priority != null) {
-            if (priority.equalsIgnoreCase("HIGH")) {
-                tvPriority.setBackgroundResource(R.drawable.priority_high_bg);
-                tvPriority.setTextColor(ContextCompat.getColor(this, R.color.priority_high_text));
-            } else if (priority.equalsIgnoreCase("MEDIUM")) {
-                tvPriority.setBackgroundResource(R.drawable.priority_medium_bg);
-                tvPriority.setTextColor(ContextCompat.getColor(this, R.color.priority_medium_text));
-            } else if (priority.equalsIgnoreCase("LOW")) {
-                tvPriority.setBackgroundResource(R.drawable.priority_low_bg);
-                tvPriority.setTextColor(ContextCompat.getColor(this, R.color.priority_low_text));
-            }
-        }
-
-        llUpdatesContainer.removeAllViews();
-        List<Ticket.StatusHistory> history = ticket.getStatusHistory();
-        if (history != null && !history.isEmpty()) {
-            LayoutInflater inflater = LayoutInflater.from(this);
-            for (Ticket.StatusHistory item : history) {
-                View updateView = inflater.inflate(R.layout.item_update, llUpdatesContainer, false);
-                
-                TextView tvAdminName = updateView.findViewById(R.id.tv_admin_name);
-                TextView tvUpdateTime = updateView.findViewById(R.id.tv_update_time);
-                TextView tvUpdateNote = updateView.findViewById(R.id.tv_update_note);
-
-                String from = item.getOldStatus() != null ? item.getOldStatus().replace('_', ' ') : "—";
-                String to = item.getNewStatus() != null ? item.getNewStatus().replace('_', ' ') : "—";
-                tvAdminName.setText(from + " → " + to);
-                tvUpdateTime.setText(item.getChangedAt() != null ? item.getChangedAt() : "");
-                tvUpdateNote.setText(item.getNote() != null ? item.getNote() : "No note provided.");
-                
-                llUpdatesContainer.addView(updateView);
-            }
-        }
-
+        updateStatusUI(ticket.getStatus());
+        renderStatusHistory(ticket.getStatusHistory());
         applyRoleActions(ticket);
     }
 
-    private String statusLabel(String status) {
-        if (status == null) return "";
-        return status.replace('_', ' ');
+    private String getFieldValue(String value) {
+        if (value == null || value.trim().isEmpty()) return "N/A";
+        return value;
+    }
+
+    private void updatePriorityUI(String priority) {
+        tvPriority.setText(priority != null ? priority : "Low");
+        int bg = R.drawable.priority_low_bg, text = R.color.priority_low_text;
+        if (priority != null) {
+            if (priority.equalsIgnoreCase("HIGH")) { 
+                bg = R.drawable.priority_high_bg; 
+                text = R.color.priority_high_text; 
+            } else if (priority.equalsIgnoreCase("MEDIUM")) { 
+                bg = R.drawable.priority_medium_bg; 
+                text = R.color.priority_medium_text; 
+            }
+        }
+        tvPriority.setBackgroundResource(bg);
+        tvPriority.setTextColor(ContextCompat.getColor(this, text));
+    }
+
+    private void updateStatusUI(String status) {
+        tvStatus.setText(statusLabel(status));
+        if (status == null) return;
+        int bg = R.drawable.status_open_bg, text = R.color.status_open_text;
+        if (status.equalsIgnoreCase("IN_PROGRESS")) { bg = R.drawable.status_progress_bg; text = R.color.status_progress_text; }
+        else if (status.equalsIgnoreCase("RESOLVED")) { bg = R.drawable.status_resolved_bg; text = R.color.status_resolved_text; }
+        else if (status.equalsIgnoreCase("CLOSED")) { bg = R.drawable.status_closed_bg; text = R.color.white; }
+        
+        tvStatus.setBackgroundResource(bg);
+        tvStatus.setTextColor(ContextCompat.getColor(this, text));
+    }
+
+    private void renderStatusHistory(List<Ticket.StatusHistory> history) {
+        llUpdatesContainer.removeAllViews();
+        if (history == null || history.isEmpty()) return;
+        LayoutInflater inflater = LayoutInflater.from(this);
+        for (Ticket.StatusHistory item : history) {
+            View updateView = inflater.inflate(R.layout.item_update, llUpdatesContainer, false);
+            ((TextView)updateView.findViewById(R.id.tv_admin_name)).setText(String.format("%s → %s", statusLabel(item.getOldStatus()), statusLabel(item.getNewStatus())));
+            ((TextView)updateView.findViewById(R.id.tv_update_time)).setText(item.getChangedAt());
+            ((TextView)updateView.findViewById(R.id.tv_update_note)).setText(item.getNote() != null ? item.getNote() : "No note provided.");
+            llUpdatesContainer.addView(updateView);
+        }
     }
 
     private void applyRoleActions(Ticket ticket) {
         String role = tokenManager.getUserType();
-        boolean isEndUser = "END_USER".equalsIgnoreCase(role) || role == null;
-        llCommentInput.setVisibility(isEndUser ? View.VISIBLE : View.GONE);
+        boolean isStaff = tokenManager.isTechnician() || tokenManager.isAdmin();
+        boolean isResolvedOrClosed = "RESOLVED".equalsIgnoreCase(ticket.getStatus()) || "CLOSED".equalsIgnoreCase(ticket.getStatus());
+        
+        llMessageInput.setVisibility(View.VISIBLE);
+        cbInternalNote.setVisibility(isStaff ? View.VISIBLE : View.GONE);
+        
+        boolean assignedToMe = ticket.getAssignedTechnician() != null && 
+                             ticket.getAssignedTechnician().getId() != null && 
+                             ticket.getAssignedTechnician().getId().equals(tokenManager.getUserId());
 
-        btnAccept.setVisibility(View.GONE);
-        llResolveBlock.setVisibility(View.GONE);
-        llAssignBlock.setVisibility(View.GONE);
-
-        boolean unassigned = ticket.isUnassigned();
-
-        if ("TECHNICIAN".equalsIgnoreCase(role)) {
-            boolean assignedToMe = !unassigned && ticket.getAssignedTechnician() != null 
-                    && ticket.getAssignedTechnician().getId() != null
-                    && ticket.getAssignedTechnician().getId().equals(tokenManager.getUserId());
-            
-            boolean canResolve = assignedToMe && !"RESOLVED".equalsIgnoreCase(ticket.getStatus()) 
-                    && !"CLOSED".equalsIgnoreCase(ticket.getStatus());
-
-            btnAccept.setVisibility(unassigned ? View.VISIBLE : View.GONE);
-            llResolveBlock.setVisibility(canResolve ? View.VISIBLE : View.GONE);
-            llRoleActions.setVisibility(unassigned || canResolve ? View.VISIBLE : View.GONE);
-        } else if ("ADMIN".equalsIgnoreCase(role)) {
-            llAssignBlock.setVisibility(unassigned ? View.VISIBLE : View.GONE);
-            llRoleActions.setVisibility(unassigned ? View.VISIBLE : View.GONE);
-            if (unassigned) loadTechniciansForAssign();
-        } else {
-            llRoleActions.setVisibility(View.GONE);
+        if (isStaff && ticket.isUnassigned()) {
+            llMessageInput.setVisibility(View.GONE); 
+        } else if (tokenManager.isTechnician() && !assignedToMe && !tokenManager.isAdmin()) {
+            llMessageInput.setVisibility(View.GONE); 
+        } else if (!isStaff && isResolvedOrClosed) {
+            llMessageInput.setVisibility(View.GONE);
         }
+
+        llCommentInput.setVisibility(!isStaff && "RESOLVED".equalsIgnoreCase(ticket.getStatus()) ? View.VISIBLE : View.GONE);
+
+        btnAccept.setVisibility(isStaff && ticket.isUnassigned() ? View.VISIBLE : View.GONE);
+        llResolveBlock.setVisibility(isStaff && assignedToMe && !isResolvedOrClosed ? View.VISIBLE : View.GONE);
+        llAssignBlock.setVisibility(tokenManager.isAdmin() && ticket.isUnassigned() ? View.VISIBLE : View.GONE);
+        
+        checkRoleActionsVisibility();
+        
+        if (llAssignBlock.getVisibility() == View.VISIBLE) loadTechniciansForAssign();
+    }
+
+    private void checkRoleActionsVisibility() {
+        boolean anyVisible = btnAccept.getVisibility() == View.VISIBLE || 
+                            llResolveBlock.getVisibility() == View.VISIBLE || 
+                            llAssignBlock.getVisibility() == View.VISIBLE;
+        llRoleActions.setVisibility(anyVisible ? View.VISIBLE : View.GONE);
+    }
+
+    private void acceptTicket() {
+        btnAccept.setEnabled(false);
+        apiService.acceptTicket(ticketId).enqueue(new Callback<ApiResponse<Ticket>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<Ticket>> call, Response<ApiResponse<Ticket>> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    Toast.makeText(TicketDetailsActivity.this, "Ticket claimed", Toast.LENGTH_SHORT).show();
+                    btnAccept.setVisibility(View.GONE);
+                    checkRoleActionsVisibility();
+                    viewModel.refreshTicketDetail(ticketId, null);
+                } else {
+                    btnAccept.setEnabled(true);
+                    String error = ApiErrors.extractMessage(response, "Could not claim ticket");
+                    Toast.makeText(TicketDetailsActivity.this, error, Toast.LENGTH_SHORT).show();
+                }
+            }
+            @Override public void onFailure(Call<ApiResponse<Ticket>> call, Throwable t) { 
+                btnAccept.setEnabled(true);
+                Toast.makeText(TicketDetailsActivity.this, R.string.error_network, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void resolveTicket() {
+        btnResolve.setEnabled(false);
+        Map<String, Object> body = new HashMap<>();
+        body.put("status", "RESOLVED");
+        String note = etResolveNote.getText().toString().trim();
+        if (!note.isEmpty()) body.put("note", note);
+
+        apiService.updateTicketStatus(ticketId, body).enqueue(new Callback<ApiResponse<Ticket>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<Ticket>> call, Response<ApiResponse<Ticket>> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    Toast.makeText(TicketDetailsActivity.this, "Ticket resolved", Toast.LENGTH_SHORT).show();
+                    etResolveNote.setText("");
+                    llResolveBlock.setVisibility(View.GONE);
+                    checkRoleActionsVisibility();
+                    viewModel.refreshTicketDetail(ticketId, null);
+                } else {
+                    btnResolve.setEnabled(true);
+                    String error = ApiErrors.extractMessage(response, "Could not resolve ticket");
+                    Toast.makeText(TicketDetailsActivity.this, error, Toast.LENGTH_SHORT).show();
+                }
+            }
+            @Override public void onFailure(Call<ApiResponse<Ticket>> call, Throwable t) { 
+                btnResolve.setEnabled(true);
+                Toast.makeText(TicketDetailsActivity.this, R.string.error_network, Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void loadTechniciansForAssign() {
@@ -380,71 +499,13 @@ public class TicketDetailsActivity extends AppCompatActivity {
                 adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
                 spAssignTechnician.setAdapter(adapter);
             }
-
-            @Override
-            public void onFailure(Call<ApiResponse<List<User>>> call, Throwable t) {
-            }
-        });
-    }
-
-    private void acceptTicket() {
-        btnAccept.setEnabled(false);
-        apiService.acceptTicket(ticketId).enqueue(new Callback<ApiResponse<Ticket>>() {
-            @Override
-            public void onResponse(Call<ApiResponse<Ticket>> call, Response<ApiResponse<Ticket>> response) {
-                btnAccept.setEnabled(true);
-                if (response.isSuccessful()) {
-                    Toast.makeText(TicketDetailsActivity.this, R.string.ticket_updated, Toast.LENGTH_SHORT).show();
-                    // After accepting, the ticket is no longer unassigned
-                    isUnassigned = false;
-                    fetchTicketDetails(ticketId);
-                } else {
-                    Toast.makeText(TicketDetailsActivity.this, R.string.error_generic, Toast.LENGTH_SHORT).show();
-                }
-            }
-
-            @Override
-            public void onFailure(Call<ApiResponse<Ticket>> call, Throwable t) {
-                btnAccept.setEnabled(true);
-                Toast.makeText(TicketDetailsActivity.this, R.string.error_network, Toast.LENGTH_SHORT).show();
-            }
-        });
-    }
-
-    private void resolveTicket() {
-        btnResolve.setEnabled(false);
-        Map<String, Object> body = new HashMap<>();
-        body.put("status", "RESOLVED");
-        String note = etResolveNote.getText().toString().trim();
-        if (!note.isEmpty()) body.put("note", note);
-
-        apiService.updateTicketStatus(ticketId, body).enqueue(new Callback<ApiResponse<Ticket>>() {
-            @Override
-            public void onResponse(Call<ApiResponse<Ticket>> call, Response<ApiResponse<Ticket>> response) {
-                btnResolve.setEnabled(true);
-                if (response.isSuccessful()) {
-                    etResolveNote.setText("");
-                    Toast.makeText(TicketDetailsActivity.this, R.string.ticket_updated, Toast.LENGTH_SHORT).show();
-                    fetchTicketDetails(ticketId);
-                } else {
-                    Toast.makeText(TicketDetailsActivity.this, R.string.error_generic, Toast.LENGTH_SHORT).show();
-                }
-            }
-
-            @Override
-            public void onFailure(Call<ApiResponse<Ticket>> call, Throwable t) {
-                btnResolve.setEnabled(true);
-                Toast.makeText(TicketDetailsActivity.this, R.string.error_network, Toast.LENGTH_SHORT).show();
-            }
+            @Override public void onFailure(Call<ApiResponse<List<User>>> call, Throwable t) {}
         });
     }
 
     private void assignTicket() {
         int pos = spAssignTechnician.getSelectedItemPosition();
-        if (pos < 0 || pos >= assignableTechnicians.size()) {
-            Toast.makeText(this, R.string.error_fill_required, Toast.LENGTH_SHORT).show();
-            return;
-        }
+        if (pos < 0 || pos >= assignableTechnicians.size()) return;
         String technicianId = assignableTechnicians.get(pos).getId();
 
         btnAssign.setEnabled(false);
@@ -454,19 +515,18 @@ public class TicketDetailsActivity extends AppCompatActivity {
         apiService.assignTicket(ticketId, body).enqueue(new Callback<ApiResponse<Ticket>>() {
             @Override
             public void onResponse(Call<ApiResponse<Ticket>> call, Response<ApiResponse<Ticket>> response) {
-                btnAssign.setEnabled(true);
-                if (response.isSuccessful()) {
-                    Toast.makeText(TicketDetailsActivity.this, R.string.ticket_updated, Toast.LENGTH_SHORT).show();
-                    // After assigning, the ticket is no longer unassigned
-                    isUnassigned = false;
-                    fetchTicketDetails(ticketId);
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    Toast.makeText(TicketDetailsActivity.this, "Ticket assigned", Toast.LENGTH_SHORT).show();
+                    llAssignBlock.setVisibility(View.GONE);
+                    checkRoleActionsVisibility();
+                    viewModel.refreshTicketDetail(ticketId, null);
                 } else {
-                    Toast.makeText(TicketDetailsActivity.this, R.string.error_generic, Toast.LENGTH_SHORT).show();
+                    btnAssign.setEnabled(true);
+                    String error = ApiErrors.extractMessage(response, "Could not assign ticket");
+                    Toast.makeText(TicketDetailsActivity.this, error, Toast.LENGTH_SHORT).show();
                 }
             }
-
-            @Override
-            public void onFailure(Call<ApiResponse<Ticket>> call, Throwable t) {
+            @Override public void onFailure(Call<ApiResponse<Ticket>> call, Throwable t) { 
                 btnAssign.setEnabled(true);
                 Toast.makeText(TicketDetailsActivity.this, R.string.error_network, Toast.LENGTH_SHORT).show();
             }
@@ -474,29 +534,27 @@ public class TicketDetailsActivity extends AppCompatActivity {
     }
 
     private void submitReview() {
-        String comment = etComment.getText().toString();
-        if (comment.isEmpty()) return;
-
         int rating = Math.round(rbRating.getRating());
         if (rating < 1) rating = 1;
-
         Map<String, Object> body = new HashMap<>();
         body.put("rating", rating);
-        body.put("comment", comment);
+        body.put("comment", etComment.getText().toString());
 
         apiService.submitReview(ticketId, body).enqueue(new Callback<ApiResponse<Map<String, Object>>>() {
             @Override
             public void onResponse(Call<ApiResponse<Map<String, Object>>> call, Response<ApiResponse<Map<String, Object>>> response) {
                 if (response.isSuccessful()) {
                     etComment.setText("");
-                    fetchTicketDetails(ticketId);
+                    llCommentInput.setVisibility(View.GONE);
+                    viewModel.refreshTicketDetail(ticketId, null);
                 }
             }
-
-            @Override
-            public void onFailure(Call<ApiResponse<Map<String, Object>>> call, Throwable t) {
-                Toast.makeText(TicketDetailsActivity.this, "Network Error", Toast.LENGTH_SHORT).show();
-            }
+            @Override public void onFailure(Call<ApiResponse<Map<String, Object>>> call, Throwable t) {}
         });
+    }
+
+    private String statusLabel(String status) {
+        if (status == null) return "Unknown";
+        return status.replace('_', ' ');
     }
 }

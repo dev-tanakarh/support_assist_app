@@ -1,6 +1,8 @@
 package com.example.supportassist;
 
 import android.os.Bundle;
+import android.util.Log;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -10,13 +12,18 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.model.GlideUrl;
 import com.bumptech.glide.load.model.LazyHeaders;
+import com.example.supportassist.viewmodel.TicketViewModel;
 import dagger.hilt.android.AndroidEntryPoint;
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -28,8 +35,11 @@ import retrofit2.Response;
 @AndroidEntryPoint
 public class AdminDashboardFragment extends Fragment {
 
+    private static final String TAG = "AdminDashboard";
+
     @Inject ApiService apiService;
     @Inject TokenManager tokenManager;
+    @Inject DataRepository dataRepository;
 
     private ProgressBar progressBar;
     private TextView tvGreeting;
@@ -38,11 +48,15 @@ public class AdminDashboardFragment extends Fragment {
     private LinearLayout llByStatus, llByPriority, llTopTechnicians;
     private RecyclerView rvRecentTickets;
     private TicketAdapter recentTicketsAdapter;
+    private TicketViewModel viewModel;
+    private final CompositeDisposable disposables = new CompositeDisposable();
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_admin_dashboard, container, false);
+
+        viewModel = new ViewModelProvider(this).get(TicketViewModel.class);
 
         progressBar = view.findViewById(R.id.loading_indicator);
         tvGreeting = view.findViewById(R.id.tv_admin_greeting);
@@ -60,25 +74,42 @@ public class AdminDashboardFragment extends Fragment {
         rvRecentTickets.setAdapter(recentTicketsAdapter);
 
         String name = tokenManager.getUserName();
-        if (name == null || name.isEmpty()) name = "Admin";
-        tvGreeting.setText(getString(R.string.hi_user, name));
+        tvGreeting.setText(getString(R.string.hi_user, name != null ? name : "Admin"));
 
         loadProfileImage();
+        observeViewModel();
         loadDashboard();
-        loadRecentTickets();
+        
+        // Initial sync
+        viewModel.refreshRecentTickets();
+        
+        view.findViewById(R.id.tv_see_all_admin).setOnClickListener(v -> {
+             if (getActivity() instanceof MainActivity) {
+                 ((MainActivity) getActivity()).navigateToAdminTickets();
+             }
+        });
+
         return view;
     }
 
-    private void loadProfileImage() {
-        User user = DataRepository.getInstance(requireContext()).getCachedProfile();
-        if (user != null && ivAdminAvatar != null) {
-            String imageUrl = ApiClient.getFullImageUrl(user.getProfileImageUrl());
-            if (imageUrl != null) {
-                String token = tokenManager.getAccessToken();
-                GlideUrl glideUrl = new GlideUrl(imageUrl, new LazyHeaders.Builder()
-                        .addHeader("Authorization", "Bearer " + token)
-                        .build());
+    private void observeViewModel() {
+        disposables.add(viewModel.getRecentTickets()
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(tickets -> {
+                    if (tickets != null) {
+                        recentTicketsAdapter.updateTickets(tickets.size() > 5 ? tickets.subList(0, 5) : tickets);
+                    }
+                }, throwable -> Log.e(TAG, "Error observing recent tickets", throwable)));
+    }
 
+    private void loadProfileImage() {
+        User user = dataRepository.getCachedProfile();
+        if (user != null && ivAdminAvatar != null) {
+            String avatarPath = user.getAvatarThumbnailUrl();
+            if (avatarPath == null || avatarPath.isEmpty()) avatarPath = user.getProfileImageUrl();
+            
+            if (avatarPath != null) {
+                GlideUrl glideUrl = ApiClient.getAuthenticatedGlideUrl(avatarPath, tokenManager.getAccessToken());
                 Glide.with(this)
                         .load(glideUrl)
                         .placeholder(R.drawable.ic_profile)
@@ -93,7 +124,6 @@ public class AdminDashboardFragment extends Fragment {
     public void onResume() {
         super.onResume();
         loadDashboard();
-        loadRecentTickets();
         loadProfileImage();
     }
 
@@ -104,29 +134,15 @@ public class AdminDashboardFragment extends Fragment {
             public void onResponse(Call<ApiResponse<DashboardStats>> call, Response<ApiResponse<DashboardStats>> response) {
                 if (!isAdded()) return;
                 progressBar.setVisibility(View.GONE);
-                if (response.body() == null || !response.body().isSuccess()) return;
-                render(response.body().getData());
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    render(response.body().getData());
+                }
             }
 
             @Override
             public void onFailure(Call<ApiResponse<DashboardStats>> call, Throwable t) {
                 if (isAdded()) progressBar.setVisibility(View.GONE);
             }
-        });
-    }
-
-    private void loadRecentTickets() {
-        apiService.getTicketsList(null, null, null, 1, 5).enqueue(new Callback<ApiResponse<TicketsResponse>>() {
-            @Override
-            public void onResponse(Call<ApiResponse<TicketsResponse>> call, Response<ApiResponse<TicketsResponse>> response) {
-                if (!isAdded() || response.body() == null || !response.body().isSuccess()) return;
-                List<Ticket> tickets = response.body().getData().getTickets();
-                if (tickets != null) {
-                    recentTicketsAdapter.updateTickets(tickets);
-                }
-            }
-            @Override
-            public void onFailure(Call<ApiResponse<TicketsResponse>> call, Throwable t) {}
         });
     }
 
@@ -149,28 +165,24 @@ public class AdminDashboardFragment extends Fragment {
         if (items == null || items.isEmpty()) {
             TextView empty = new TextView(getContext());
             empty.setText(R.string.admin_no_data);
-            empty.setTextColor(getResources().getColor(R.color.text_grey, null));
+            empty.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_grey));
             container.addView(empty);
             return;
         }
         for (T item : items) {
-            LinearLayout row = new LinearLayout(getContext());
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            row.setPadding(0, 8, 0, 8);
+            View rowView = LayoutInflater.from(getContext()).inflate(android.R.layout.simple_list_item_2, container, false);
+            TextView text1 = rowView.findViewById(android.R.id.text1);
+            TextView text2 = rowView.findViewById(android.R.id.text2);
+            
+            text1.setText(label.apply(item));
+            text1.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_main));
+            text1.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+            
+            text2.setText(String.valueOf(count.applyAsInt(item)));
+            text2.setTextColor(ContextCompat.getColor(requireContext(), R.color.primary_blue));
+            text2.setTypeface(null, android.graphics.Typeface.BOLD);
 
-            TextView tvLabel = new TextView(getContext());
-            tvLabel.setText(label.apply(item));
-            tvLabel.setTextColor(getResources().getColor(R.color.text_main, null));
-            LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-            row.addView(tvLabel, labelParams);
-
-            TextView tvValue = new TextView(getContext());
-            tvValue.setText(String.valueOf(count.applyAsInt(item)));
-            tvValue.setTextColor(getResources().getColor(R.color.stat_value, null));
-            tvValue.setTypeface(null, android.graphics.Typeface.BOLD);
-            row.addView(tvValue);
-
-            container.addView(row);
+            container.addView(rowView);
         }
     }
 
@@ -180,5 +192,11 @@ public class AdminDashboardFragment extends Fragment {
         if (hours < 1) return "<1h";
         if (hours < 48) return hours + "h";
         return String.format(Locale.getDefault(), "%.1fd", hours / 24.0);
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        disposables.dispose();
     }
 }

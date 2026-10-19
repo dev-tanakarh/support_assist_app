@@ -16,7 +16,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import javax.inject.Inject;
 import dagger.hilt.android.AndroidEntryPoint;
 
@@ -25,8 +24,10 @@ public class MainActivity extends AppCompatActivity {
 
     @Inject AlertPoller alertPoller;
     @Inject ApiService apiService;
+    @Inject TokenManager tokenManager;
+    @Inject WebSocketManager webSocketManager;
+    
     private BottomNavigationView bottomNav;
-    private TokenManager tokenManager;
     private boolean doubleBackToExitPressedOnce = false;
     private int homeItemId = R.id.nav_home;
 
@@ -38,8 +39,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        tokenManager = new TokenManager(this);
 
         requestNotificationPermissionIfNeeded();
         FcmTokenSync.registerCurrentToken(apiService);
@@ -68,16 +67,21 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+
+        // Initialize Real-Time Connection
+        if (tokenManager.getAccessToken() != null) {
+            webSocketManager.connect(tokenManager.getAccessToken());
+        }
     }
 
     private void setUpNavForRole() {
         String role = tokenManager.getUserType();
 
-        if ("TECHNICIAN".equals(role)) {
+        if ("TECHNICIAN".equalsIgnoreCase(role)) {
             bottomNav.getMenu().clear();
             bottomNav.inflateMenu(R.menu.bottom_nav_menu_technician);
             homeItemId = R.id.nav_tech_dashboard;
-        } else if ("ADMIN".equals(role)) {
+        } else if ("ADMIN".equalsIgnoreCase(role)) {
             bottomNav.getMenu().clear();
             bottomNav.inflateMenu(R.menu.bottom_nav_menu_admin);
             homeItemId = R.id.nav_admin_dashboard;
@@ -89,7 +93,7 @@ public class MainActivity extends AppCompatActivity {
             int itemId = item.getItemId();
             if (itemId == R.id.nav_create_ticket) {
                 startActivity(new Intent(MainActivity.this, CreateTicketActivity.class));
-                return false; // Don't select the item
+                return false; 
             }
             Fragment selectedFragment = fragmentFor(itemId);
             if (selectedFragment != null) {
@@ -102,16 +106,15 @@ public class MainActivity extends AppCompatActivity {
 
     @Nullable
     private Fragment fragmentFor(int itemId) {
-        // END_USER
         if (itemId == R.id.nav_home) return new HomeFragment();
         if (itemId == R.id.nav_tickets) return new TicketsFragment();
         if (itemId == R.id.nav_alerts) return new AlertsFragment();
         if (itemId == R.id.nav_profile) return new ProfileFragment();
-        // TECHNICIAN
+        
         if (itemId == R.id.nav_tech_dashboard) return new TechnicianDashboardFragment();
         if (itemId == R.id.nav_tech_queue) return new TechnicianQueueFragment();
         if (itemId == R.id.nav_tech_profile) return new ProfileFragment();
-        // ADMIN
+        
         if (itemId == R.id.nav_admin_dashboard) return new AdminDashboardFragment();
         if (itemId == R.id.nav_admin_tickets) return new AdminTicketsFragment();
         if (itemId == R.id.nav_admin_users) return new AdminUsersFragment();
@@ -148,5 +151,13 @@ public class MainActivity extends AppCompatActivity {
 
     public void navigateToTickets() {
         bottomNav.setSelectedItemId(R.id.nav_tickets);
+    }
+
+    public void navigateToAdminTickets() {
+        bottomNav.setSelectedItemId(R.id.nav_admin_tickets);
+    }
+
+    public void navigateToTechQueue() {
+        bottomNav.setSelectedItemId(R.id.nav_tech_queue);
     }
 }

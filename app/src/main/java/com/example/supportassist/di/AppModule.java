@@ -5,6 +5,7 @@ import com.example.supportassist.ApiClient;
 import com.example.supportassist.ApiService;
 import com.example.supportassist.DataRepository;
 import com.example.supportassist.TokenManager;
+import com.example.supportassist.WebSocketManager;
 import dagger.Module;
 import dagger.Provides;
 import dagger.hilt.InstallIn;
@@ -32,5 +33,11 @@ public class AppModule {
     @Singleton
     public DataRepository provideDataRepository(@ApplicationContext Context context) {
         return DataRepository.getInstance(context);
+    }
+
+    @Provides
+    @Singleton
+    public WebSocketManager provideWebSocketManager() {
+        return WebSocketManager.getInstance();
     }
 }

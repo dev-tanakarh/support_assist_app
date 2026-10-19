@@ -132,6 +132,7 @@
     <string name="in_progress">In Progress</string>
     <string name="closed">Closed</string>
     <string name="status_time_bullet"> • %s</string>
+    <string name="due_date_format">– Due: %1$s</string>
 
     <!-- Ticket Details -->
     <string name="ticket_details">Ticket Details</string>
@@ -146,11 +147,23 @@
     <string name="unknown">Unknown</string>
     <string name="na">N/A</string>
     <string name="general">General</string>
+    <string name="conversation">Conversation</string>
+    <string name="no_messages">No messages yet.</string>
+    <string name="reply_hint">Type a reply...</string>
+    <string name="internal_note">Internal Note</string>
+    <string name="role_staff_suffix"> (Staff)</string>
+    <string name="role_admin_suffix"> (Admin)</string>
+    <string name="internal_note_suffix"> (Internal Note)</string>
+    <string name="me">Me</string>
+    <string name="system">System</string>
 
     <!-- Notifications -->
     <string name="notifications">Notifications</string>
     <string name="mark_all_as_read">Mark all as read</string>
     <string name="error_load_alerts">Failed to load alerts</string>
+    <string name="view_ticket">View Ticket</string>
+    <string name="close">Close</string>
+    <string name="no_alerts">No notifications yet.</string>
 
     <!-- Edit Profile -->
     <string name="edit_profile">Edit Profile</string>
@@ -166,4 +179,9 @@
     <!-- Broadcast Dialog -->
     <string name="broadcast_desc">Send a notification to all users in the system.</string>
     <string name="send_now">Send Now</string>
+
+    <!-- Misc -->
+    <string name="search_all_tickets">Search all tickets...</string>
+    <string name="search_your_queue">Search your queue...</string>
+    <string name="no_tickets_found">No tickets found matching your criteria.</string>
 </resources>

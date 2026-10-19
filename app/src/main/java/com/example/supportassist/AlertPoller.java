@@ -13,25 +13,14 @@ import retrofit2.Call;
 import retrofit2.Response;
 
 /**
- * Replaces SocketManager (a Socket.io client pointed at a server that was
- * never built — this backend is PHP-FPM, not Node, so a WebSocket server was
- * never the right call here) and DataRepository's old fixed 15s polling loop.
- *
- * Talks to GET /api/alerts/poll: a single blocking HTTP call that returns the
- * moment something changes (or after ~25s with nothing). Loop = call, look at
- * what came back, call again — see the backend's RUNNING.md for the full
- * explanation and its real scaling limits.
- *
- * Deliberately only runs while the app is foregrounded (start()/stop() are
- * called from MainActivity's onStart()/onStop()). Background delivery is
- * FCM's job, not this — an infinite background long-poll loop would drain
- * battery for no benefit once the user has left the app.
+ * Stage 7: Notifications & Live Updates.
+ * Implements long-polling against /api/alerts/poll.
  */
 @Singleton
 public class AlertPoller {
     private static final String TAG = "AlertPoller";
     private static final int TIMEOUT_SECONDS = 25;
-    private static final long RETRY_DELAY_MS = 5_000; // backoff when offline, so a dead network doesn't spin-loop
+    private static final long RETRY_DELAY_MS = 5_000;
 
     private final ApiService apiService;
     private final Context appContext;
@@ -49,14 +38,15 @@ public class AlertPoller {
     public synchronized void start() {
         if (running) return;
         running = true;
-        since = isoNow();
+        // Start from now if we don't have a cursor
+        if (since == null) since = isoNow();
         new Thread(this::loop, "alert-poller").start();
     }
 
     public synchronized void stop() {
         running = false;
         if (currentCall != null) {
-            currentCall.cancel(); // unblocks the thread immediately instead of waiting out the timeout
+            currentCall.cancel();
         }
     }
 
@@ -65,24 +55,26 @@ public class AlertPoller {
             Call<ApiResponse<AlertPollResponse>> call = apiService.pollAlerts(since, TIMEOUT_SECONDS);
             currentCall = call;
             try {
-                Response<ApiResponse<AlertPollResponse>> response = call.execute(); // blocks this thread, not the UI thread
-                if (!running) break; // stop() was called while we were waiting
+                Response<ApiResponse<AlertPollResponse>> response = call.execute();
+                if (!running) break;
 
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
-                    AlertPollResponse body = response.body().getData();
-                    since = body.getServerTime();
-                    if (body.getAlerts() != null && !body.getAlerts().isEmpty()) {
-                        Log.d(TAG, body.getAlerts().size() + " new alert(s)");
+                    AlertPollResponse data = response.body().getData();
+                    
+                    // Stage 7 requirement: Use returned serverTime as the next cursor
+                    if (data.getServerTime() != null) {
+                        since = data.getServerTime();
+                    }
+
+                    if (data.getAlerts() != null && !data.getAlerts().isEmpty()) {
+                        Log.d(TAG, "New alerts received: " + data.getAlerts().size());
+                        // Refresh cached data to reflect changes (Stage 5/8)
                         DataRepository.getInstance(appContext).syncDataSilently();
                     }
-                    // Empty result is normal — the server just hit its 25s
-                    // timeout with nothing new. Loop straight back around,
-                    // no extra delay needed.
-                } else {
+                } else if (response.code() != 404) {
                     sleepBeforeRetry();
                 }
             } catch (java.io.IOException e) {
-                // Cancelled (stop() called) or no network — either way, back off.
                 if (running) sleepBeforeRetry();
             }
         }

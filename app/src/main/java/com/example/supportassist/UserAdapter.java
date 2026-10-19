@@ -10,7 +10,6 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.model.GlideUrl;
-import com.bumptech.glide.load.model.LazyHeaders;
 import java.util.List;
 
 public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder> {
@@ -52,16 +51,15 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
         holder.tvEmail.setText(user.getEmail());
         holder.tvType.setText(user.getUserType());
 
-        // Handle Profile Image
-        String imageUrl = ApiClient.getFullImageUrl(user.getProfileImageUrl());
-        if (imageUrl != null) {
-            TokenManager tokenManager = new TokenManager(holder.itemView.getContext());
-            String token = tokenManager.getAccessToken();
+        // Handle Profile Image - Prioritize Thumbnail (Stage 8 Performance)
+        TokenManager tokenManager = new TokenManager(holder.itemView.getContext());
+        String avatarPath = user.getAvatarThumbnailUrl();
+        if (avatarPath == null || avatarPath.isEmpty()) {
+            avatarPath = user.getProfileImageUrl();
+        }
 
-            GlideUrl glideUrl = new GlideUrl(imageUrl, new LazyHeaders.Builder()
-                    .addHeader("Authorization", "Bearer " + token)
-                    .build());
-
+        if (avatarPath != null && !avatarPath.isEmpty()) {
+            GlideUrl glideUrl = ApiClient.getAuthenticatedGlideUrl(avatarPath, tokenManager.getAccessToken());
             Glide.with(holder.itemView.getContext())
                     .load(glideUrl)
                     .placeholder(R.drawable.ic_profile)
@@ -72,15 +70,15 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
             holder.ivAvatar.setImageResource(R.drawable.ic_profile);
         }
 
-        boolean isTechnician = "TECHNICIAN".equals(user.getUserType());
+        boolean isTechnician = "TECHNICIAN".equalsIgnoreCase(user.getUserType());
         holder.ivRemove.setVisibility(isTechnician ? View.VISIBLE : View.GONE);
         holder.ivRemove.setOnClickListener(v -> {
             if (removeListener != null) removeListener.onRemove(user);
         });
 
-        boolean isAdmin = "ADMIN".equals(user.getUserType());
+        boolean isAdmin = "ADMIN".equalsIgnoreCase(user.getUserType());
         holder.swActive.setVisibility(isAdmin ? View.GONE : View.VISIBLE);
-        holder.swActive.setOnCheckedChangeListener(null); // avoid firing while we set the initial state below
+        holder.swActive.setOnCheckedChangeListener(null); 
         holder.swActive.setChecked(user.isActive());
         holder.swActive.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (toggleListener != null && isChecked != user.isActive()) {
@@ -88,7 +86,7 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
             }
         });
 
-        if (isTechnician && user.getRating() != null && user.getReviewCount() > 0) {
+        if (isTechnician && user.getRating() != null) {
             holder.tvRating.setVisibility(View.VISIBLE);
             holder.tvRating.setText(holder.itemView.getContext().getString(
                     R.string.technician_rating_format, user.getRating(), user.getReviewCount()));
@@ -99,7 +97,7 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserViewHolder
 
     @Override
     public int getItemCount() {
-        return users.size();
+        return users != null ? users.size() : 0;
     }
 
     static class UserViewHolder extends RecyclerView.ViewHolder {

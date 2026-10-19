@@ -7,10 +7,10 @@ import android.util.Log;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import android.content.SharedPreferences;
+import com.bumptech.glide.Glide;
+import com.example.supportassist.db.AppDatabase;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -36,10 +36,6 @@ public class DataRepository {
         prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         gson = new Gson();
         apiService = ApiClient.getApiService(context);
-        // No fixed-interval polling here anymore — AlertPoller (started/stopped
-        // from MainActivity's onStart()/onStop()) calls syncDataSilently() only
-        // when the long-poll endpoint actually reports a change. See AlertPoller's
-        // docblock for why that replaced both this and the old Socket.io client.
         syncCategories(); // Pre-fetch categories on init
     }
 
@@ -77,8 +73,10 @@ public class DataRepository {
                     cacheTickets(freshTickets);
                     
                     // Automatically cache details for tickets found in the list
-                    for (Ticket t : freshTickets) {
-                        cacheTicketDetail(t);
+                    if (freshTickets != null) {
+                        for (Ticket t : freshTickets) {
+                            cacheTicketDetail(t);
+                        }
                     }
                     
                     notifyChange();
@@ -95,6 +93,7 @@ public class DataRepository {
             public void onResponse(Call<ApiResponse<List<Category>>> call, Response<ApiResponse<List<Category>>> response) {
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                     cacheCategories(response.body().getData());
+                    notifyChange();
                 }
             }
             @Override
@@ -144,7 +143,30 @@ public class DataRepository {
         return gson.fromJson(json, new TypeToken<List<Category>>(){}.getType());
     }
 
-    public void clearCache() {
+    /**
+     * Clear all user-specific state and sensitive cached data (Stage 6 Requirement).
+     */
+    public void clearCache(Context context) {
+        // 1. Clear SharedPreferences (Profile, Tickets list, etc.)
         prefs.edit().clear().apply();
+        
+        // 2. Clear Glide memory/disk cache for sensitive images
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            Glide.get(context).clearMemory();
+        } else {
+            new Handler(Looper.getMainLooper()).post(() -> Glide.get(context).clearMemory());
+        }
+        new Thread(() -> Glide.get(context).clearDiskCache()).start();
+
+        // 3. Security Fix: Clear local Room database tables to prevent data leakage between users
+        new Thread(() -> {
+            try {
+                AppDatabase db = AppDatabase.getInstance(context);
+                db.clearAllTables();
+                Log.d("DataRepository", "Room database tables cleared successfully on logout.");
+            } catch (Exception e) {
+                Log.e("DataRepository", "Failed to clear Room database tables", e);
+            }
+        }).start();
     }
 }

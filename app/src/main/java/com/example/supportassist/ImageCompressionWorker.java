@@ -44,7 +44,9 @@ public class ImageCompressionWorker extends Worker {
             if (targetWidth > 0 && targetHeight > 0) {
                 if (cropSquare) {
                     processedBitmap = cropToSquare(bitmap);
-                    processedBitmap = Bitmap.createScaledBitmap(processedBitmap, targetWidth, targetHeight, true);
+                    Bitmap scaled = Bitmap.createScaledBitmap(processedBitmap, targetWidth, targetHeight, true);
+                    if (processedBitmap != bitmap && processedBitmap != scaled) processedBitmap.recycle();
+                    processedBitmap = scaled;
                 } else {
                     processedBitmap = resizeMaintainingAspectRatio(bitmap, targetWidth, targetHeight);
                 }
@@ -53,10 +55,10 @@ public class ImageCompressionWorker extends Worker {
             File outputDir = context.getCacheDir();
             File outputFile = File.createTempFile("compressed_" + UUID.randomUUID(), ".jpg", outputDir);
             
-            FileOutputStream out = new FileOutputStream(outputFile);
-            processedBitmap.compress(Bitmap.CompressFormat.JPEG, 80, out);
-            out.flush();
-            out.close();
+            try (FileOutputStream out = new FileOutputStream(outputFile)) {
+                processedBitmap.compress(Bitmap.CompressFormat.JPEG, 80, out);
+                out.flush();
+            }
 
             // Cleanup
             if (processedBitmap != bitmap) processedBitmap.recycle();
@@ -73,17 +75,21 @@ public class ImageCompressionWorker extends Worker {
     }
 
     private Bitmap loadBitmapWithRotation(Context context, Uri uri) throws Exception {
-        InputStream is = context.getContentResolver().openInputStream(uri);
-        Bitmap bitmap = BitmapFactory.decodeStream(is);
-        is.close();
+        Bitmap bitmap;
+        try (InputStream is = context.getContentResolver().openInputStream(uri)) {
+            bitmap = BitmapFactory.decodeStream(is);
+        }
 
         if (bitmap == null) return null;
 
         // Handle rotation from EXIF
-        InputStream exifIs = context.getContentResolver().openInputStream(uri);
-        ExifInterface exif = new ExifInterface(exifIs);
-        int orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_UNDEFINED);
-        exifIs.close();
+        int orientation = ExifInterface.ORIENTATION_UNDEFINED;
+        try (InputStream exifIs = context.getContentResolver().openInputStream(uri)) {
+            if (exifIs != null) {
+                ExifInterface exif = new ExifInterface(exifIs);
+                orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_UNDEFINED);
+            }
+        }
 
         Matrix matrix = new Matrix();
         switch (orientation) {

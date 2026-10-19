@@ -1,6 +1,7 @@
 package com.example.supportassist;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,10 +15,14 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import com.example.supportassist.viewmodel.UserViewModel;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import dagger.hilt.android.AndroidEntryPoint;
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -30,6 +35,8 @@ import retrofit2.Response;
 @AndroidEntryPoint
 public class AdminUsersFragment extends Fragment {
 
+    private static final String TAG = "AdminUsersFragment";
+
     @Inject ApiService apiService;
 
     private ProgressBar progressBar;
@@ -37,11 +44,15 @@ public class AdminUsersFragment extends Fragment {
     private Spinner spTypeFilter;
     private UserAdapter adapter;
     private String[] typeValues;
+    private UserViewModel viewModel;
+    private final CompositeDisposable disposables = new CompositeDisposable();
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_admin_users, container, false);
+
+        viewModel = new ViewModelProvider(this).get(UserViewModel.class);
 
         progressBar = view.findViewById(R.id.loading_indicator);
         rvUsers = view.findViewById(R.id.rv_users);
@@ -59,7 +70,7 @@ public class AdminUsersFragment extends Fragment {
         spTypeFilter.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View v, int position, long id) {
-                loadUsers(typeValues[position]);
+                observeUsers(typeValues[position]);
             }
 
             @Override
@@ -72,30 +83,30 @@ public class AdminUsersFragment extends Fragment {
         return view;
     }
 
+    private void observeUsers(String type) {
+        disposables.clear();
+        progressBar.setVisibility(View.VISIBLE);
+        
+        disposables.add(viewModel.getUsersByType(type)
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(users -> {
+                    progressBar.setVisibility(View.GONE);
+                    adapter.updateUsers(users != null ? users : new ArrayList<>());
+                }, throwable -> {
+                    progressBar.setVisibility(View.GONE);
+                    Log.e(TAG, "Error observing users", throwable);
+                }));
+        
+        viewModel.refreshUsers(type);
+    }
+
     @Override
     public void onResume() {
         super.onResume();
         int pos = spTypeFilter.getSelectedItemPosition();
-        loadUsers(pos >= 0 ? typeValues[pos] : typeValues[0]);
-    }
-
-    private void loadUsers(String type) {
-        progressBar.setVisibility(View.VISIBLE);
-        apiService.getUsers(type).enqueue(new Callback<ApiResponse<List<User>>>() {
-            @Override
-            public void onResponse(Call<ApiResponse<List<User>>> call, Response<ApiResponse<List<User>>> response) {
-                if (!isAdded()) return;
-                progressBar.setVisibility(View.GONE);
-                if (response.body() == null || !response.body().isSuccess()) return;
-                List<User> users = response.body().getData();
-                adapter.updateUsers(users != null ? users : new ArrayList<>());
-            }
-
-            @Override
-            public void onFailure(Call<ApiResponse<List<User>>> call, Throwable t) {
-                if (isAdded()) progressBar.setVisibility(View.GONE);
-            }
-        });
+        if (pos >= 0) {
+            observeUsers(typeValues[pos]);
+        }
     }
 
     private void toggleActive(User user, boolean makeActive) {
@@ -109,7 +120,7 @@ public class AdminUsersFragment extends Fragment {
                 if (!response.isSuccessful()) {
                     Toast.makeText(getContext(), ApiErrors.extractMessage(response, getString(R.string.error_generic)), Toast.LENGTH_LONG).show();
                     int pos = spTypeFilter.getSelectedItemPosition();
-                    loadUsers(pos >= 0 ? typeValues[pos] : typeValues[0]);
+                    viewModel.refreshUsers(typeValues[pos]);
                 }
             }
 
@@ -136,7 +147,7 @@ public class AdminUsersFragment extends Fragment {
                 if (!isAdded()) return;
                 if (response.isSuccessful()) {
                     int pos = spTypeFilter.getSelectedItemPosition();
-                    loadUsers(pos >= 0 ? typeValues[pos] : typeValues[0]);
+                    viewModel.refreshUsers(typeValues[pos]);
                 } else {
                     Toast.makeText(getContext(), R.string.error_generic, Toast.LENGTH_SHORT).show();
                 }
@@ -187,7 +198,7 @@ public class AdminUsersFragment extends Fragment {
                 if (!isAdded()) return;
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                     Toast.makeText(getContext(), R.string.admin_technician_created, Toast.LENGTH_SHORT).show();
-                    loadUsers("TECHNICIAN");
+                    viewModel.refreshUsers("TECHNICIAN");
                     spTypeFilter.setSelection(0);
                 } else {
                     Toast.makeText(getContext(), R.string.error_generic, Toast.LENGTH_SHORT).show();
@@ -245,5 +256,11 @@ public class AdminUsersFragment extends Fragment {
                 if (isAdded()) Toast.makeText(getContext(), R.string.error_network, Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        disposables.dispose();
     }
 }

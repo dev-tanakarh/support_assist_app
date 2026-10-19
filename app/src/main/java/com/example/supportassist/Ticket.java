@@ -19,13 +19,13 @@ public class Ticket {
     @SerializedName("priority")
     private String priority;
     
-    @SerializedName("department")
+    @SerializedName(value = "department", alternate = {"Department", "department_name", "dept"})
     private String department;
 
-    @SerializedName(value = "device_type", alternate = {"deviceType", "device"})
+    @SerializedName(value = "device_type", alternate = {"deviceType", "device", "DeviceType", "device_description"})
     private String deviceType;
 
-    @SerializedName("room")
+    @SerializedName(value = "room", alternate = {"Room", "room_number", "room_id"})
     private String room;
 
     @SerializedName(value = "attachment_url", alternate = {"attachmentUrl", "attachment"})
@@ -34,7 +34,7 @@ public class Ticket {
     @SerializedName(value = "attachment_thumbnail_url", alternate = {"attachmentThumbnailUrl", "attachmentThumbnail"})
     private String attachmentThumbnailUrl;
     
-    @SerializedName(value = "category", alternate = {"Category"})
+    @SerializedName(value = "category", alternate = {"Category", "category_object"})
     private Category category;
 
     @SerializedName(value = "reporter", alternate = {"user", "creator", "reported_by", "Reporter"})
@@ -66,9 +66,10 @@ public class Ticket {
 
     public Ticket() { }
 
-    /** Used by TicketRepository for caching. */
+    /** Used by TicketRepository for robust local caching. */
     public Ticket(String id, String subject, String description, String status, String priority,
-                   String timeAgo, String categoryName, String assignedTechnicianName, String attachmentUrl) {
+                   String timeAgo, String categoryName, String assignedTechnicianName, String attachmentUrl,
+                   String department, String room, String deviceType) {
         this.id = id;
         this.subject = subject;
         this.description = description;
@@ -78,33 +79,71 @@ public class Ticket {
         this.category = categoryName != null ? new Category(categoryName) : null;
         this.assignedTechnician = assignedTechnicianName != null ? new User(assignedTechnicianName) : null;
         this.attachmentUrl = attachmentUrl;
+        this.department = department;
+        this.room = room;
+        this.deviceType = deviceType;
     }
 
     public String getId() { return id; }
-    public String getSubject() { return subject; }
-    public String getDescription() { return description; }
-    public String getStatus() { return status; }
-    public String getPriority() { return priority; }
-    public String getDepartment() { return department; }
-    public String getDeviceType() { return deviceType; }
-    public String getRoom() { return room; }
-    public String getAttachmentUrl() { return attachmentUrl; }
-    public String getAttachmentThumbnailUrl() { return attachmentThumbnailUrl; }
-    public Category getCategory() { return category; }
-    public User getReporter() { return reporter; }
-    public String getTimeAgo() { return timeAgo; }
-    public String getCreatedAt() { return createdAt; }
-    public String getUpdatedAt() { return updatedAt; }
-    public String getDueAt() { return dueAt; }
-    public String getResolvedAt() { return resolvedAt; }
-    public boolean isOverdue() { return isOverdue; }
-    public List<StatusHistory> getStatusHistory() { return statusHistory; }
-    public User getAssignedTechnician() { return assignedTechnician; }
+    public void setId(String id) { this.id = id; }
     
-    /** 
-     * Checks if the ticket is currently unassigned. 
-     * Robustly handles null objects, missing IDs, or empty ID strings.
-     */
+    public String getSubject() { return subject; }
+    public void setSubject(String subject) { this.subject = subject; }
+    
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+    
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+    
+    public String getPriority() { return priority; }
+    public void setPriority(String priority) { this.priority = priority; }
+    
+    public String getDepartment() { return department; }
+    public void setDepartment(String department) { this.department = department; }
+    
+    public String getDeviceType() { return deviceType; }
+    public void setDeviceType(String deviceType) { this.deviceType = deviceType; }
+    
+    public String getRoom() { return room; }
+    public void setRoom(String room) { this.room = room; }
+    
+    public String getAttachmentUrl() { return attachmentUrl; }
+    public void setAttachmentUrl(String attachmentUrl) { this.attachmentUrl = attachmentUrl; }
+    
+    public String getAttachmentThumbnailUrl() { return attachmentThumbnailUrl; }
+    public void setAttachmentThumbnailUrl(String attachmentThumbnailUrl) { this.attachmentThumbnailUrl = attachmentThumbnailUrl; }
+    
+    public Category getCategory() { return category; }
+    public void setCategory(Category category) { this.category = category; }
+    
+    public User getReporter() { return reporter; }
+    public void setReporter(User reporter) { this.reporter = reporter; }
+    
+    public String getTimeAgo() { return timeAgo; }
+    public void setTimeAgo(String timeAgo) { this.timeAgo = timeAgo; }
+    
+    public String getCreatedAt() { return createdAt; }
+    public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
+    
+    public String getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(String updatedAt) { this.updatedAt = updatedAt; }
+    
+    public String getDueAt() { return dueAt; }
+    public void setDueAt(String dueAt) { this.dueAt = dueAt; }
+    
+    public String getResolvedAt() { return resolvedAt; }
+    public void setResolvedAt(String resolvedAt) { this.resolvedAt = resolvedAt; }
+    
+    public boolean isOverdue() { return isOverdue; }
+    public void setOverdue(boolean overdue) { isOverdue = overdue; }
+    
+    public List<StatusHistory> getStatusHistory() { return statusHistory; }
+    public void setStatusHistory(List<StatusHistory> statusHistory) { this.statusHistory = statusHistory; }
+    
+    public User getAssignedTechnician() { return assignedTechnician; }
+    public void setAssignedTechnician(User assignedTechnician) { this.assignedTechnician = assignedTechnician; }
+    
     public boolean isUnassigned() {
         return assignedTechnician == null || assignedTechnician.getId() == null || assignedTechnician.getId().trim().isEmpty();
     }

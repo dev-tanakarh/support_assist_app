@@ -5,6 +5,7 @@ import java.util.Map;
 
 import okhttp3.MultipartBody;
 import okhttp3.RequestBody;
+import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.DELETE;
@@ -24,6 +25,12 @@ public interface ApiService {
 
     @POST("login")
     Call<ApiResponse<LoginResponse>> login(@Body Map<String, String> body);
+
+    @POST("refresh")
+    Call<ApiResponse<LoginResponse>> refresh(@Body Map<String, String> body);
+
+    @POST("logout")
+    Call<ApiResponse<Void>> logout();
 
     @POST("forgot-password")
     Call<ApiResponse<Void>> forgotPassword(@Body Map<String, String> body);
@@ -53,6 +60,8 @@ public interface ApiService {
             @Query("priority") String priority,
             @Query("category_id") Integer categoryId,
             @Query("q") String search,
+            @Query("unassigned") Boolean unassigned,
+            @Query("resolved_after") String resolvedAfter,
             @Query("page") Integer page,
             @Query("per_page") Integer perPage
     );
@@ -61,7 +70,7 @@ public interface ApiService {
     Call<ApiResponse<List<Ticket>>> getRecentTickets(@Query("limit") Integer limit);
 
     /**
-     * @param unassigned Set to 1 if fetching a ticket from the unassigned pool (technician/admin only).
+     * @param unassigned Set to 1 if fetching a ticket from the unassigned pool.
      */
     @GET("tickets/{id}")
     Call<ApiResponse<Ticket>> getTicketDetails(
@@ -69,9 +78,24 @@ public interface ApiService {
             @Query("unassigned") Integer unassigned
     );
 
+    @GET("tickets/{id}/messages")
+    Call<ApiResponse<List<Message>>> getTicketMessages(@Path("id") String id);
+
+    @POST("tickets/{id}/messages")
+    Call<ApiResponse<Message>> postTicketMessage(@Path("id") String id, @Body Map<String, Object> body);
+
+    @GET("tickets/{id}/attachment")
+    Call<ResponseBody> getTicketAttachment(
+            @Path("id") String id,
+            @Query("variant") String variant
+    );
+
+    /**
+     * Create ticket with attachment using multipart.
+     */
     @Multipart
     @POST("tickets")
-    Call<ApiResponse<Ticket>> createTicket(
+    Call<ApiResponse<Ticket>> createTicketMultipart(
             @Part("subject") RequestBody subject,
             @Part("description") RequestBody description,
             @Part("category_id") RequestBody categoryId,
@@ -82,6 +106,12 @@ public interface ApiService {
             @Part MultipartBody.Part attachment
     );
 
+    /**
+     * Create ticket without attachment using JSON (Stage 2 Requirement).
+     */
+    @POST("tickets")
+    Call<ApiResponse<Ticket>> createTicketJson(@Body Map<String, Object> body);
+
     @POST("tickets/{id}/review")
     Call<ApiResponse<Map<String, Object>>> submitReview(@Path("id") String id, @Body Map<String, Object> body);
 
@@ -91,8 +121,8 @@ public interface ApiService {
             @Query("per_page") Integer perPage
     );
 
-    @POST("alerts/{id}/read")
-    Call<ApiResponse<Map<String, String>>> markAlertRead(@Path("id") int id);
+    @PATCH("alerts/{id}/read")
+    Call<ApiResponse<Map<String, String>>> markAlertRead(@Path("id") String id);
 
     @GET("alerts/poll")
     Call<ApiResponse<AlertPollResponse>> pollAlerts(
@@ -104,7 +134,7 @@ public interface ApiService {
     Call<ApiResponse<TicketsResponse>> getTicketsList(
             @Query("status") String status,
             @Query("priority") String priority,
-            @Query("unassigned") Integer unassigned,
+            @Query("unassigned") Boolean unassigned,
             @Query("page") Integer page,
             @Query("per_page") Integer perPage
     );

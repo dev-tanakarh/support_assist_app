@@ -1,48 +1,47 @@
 package com.example.supportassist;
 
-import android.app.AlertDialog;
+import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.paging.LoadState;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import com.example.supportassist.viewmodel.AlertViewModel;
 import com.google.android.material.button.MaterialButton;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import dagger.hilt.android.AndroidEntryPoint;
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.disposables.CompositeDisposable;
 
+@AndroidEntryPoint
 public class AlertsFragment extends Fragment {
 
     private RecyclerView rvAlerts;
     private AlertAdapter adapter;
-    private List<Alert> alertsList = new ArrayList<>();
-    private ApiService apiService;
     private ProgressBar progressBar;
-    
-    private int currentPage = 1;
-    private boolean isLoading = false;
-    private boolean isLastPage = false;
-    private static final int PAGE_SIZE = 20;
+    private View emptyState;
+    private AlertViewModel viewModel;
+    private final CompositeDisposable disposables = new CompositeDisposable();
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_alerts, container, false);
 
-        apiService = ApiClient.getApiService(getContext());
+        viewModel = new ViewModelProvider(this).get(AlertViewModel.class);
+
         progressBar = view.findViewById(R.id.loading_indicator);
+        emptyState = view.findViewById(R.id.ll_empty_state); // Assuming this ID exists or adding it if missing
 
         ImageButton btnBack = view.findViewById(R.id.btn_back_alerts);
         btnBack.setOnClickListener(v -> {
@@ -52,42 +51,42 @@ public class AlertsFragment extends Fragment {
         });
 
         rvAlerts = view.findViewById(R.id.rv_alerts);
-        LinearLayoutManager layoutManager = new LinearLayoutManager(getContext());
-        rvAlerts.setLayoutManager(layoutManager);
+        rvAlerts.setLayoutManager(new LinearLayoutManager(getContext()));
 
-        adapter = new AlertAdapter(alertsList);
+        adapter = new AlertAdapter();
         rvAlerts.setAdapter(adapter);
 
         adapter.setOnAlertClickListener((alert, position) -> {
             showAlertDetails(alert);
         });
 
-        rvAlerts.addOnScrollListener(new RecyclerView.OnScrollListener() {
-            @Override
-            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
-                super.onScrolled(recyclerView, dx, dy);
-                int visibleItemCount = layoutManager.getChildCount();
-                int totalItemCount = layoutManager.getItemCount();
-                int firstVisibleItemPosition = layoutManager.findFirstVisibleItemPosition();
-
-                if (!isLoading && !isLastPage) {
-                    if ((visibleItemCount + firstVisibleItemPosition) >= totalItemCount
-                            && firstVisibleItemPosition >= 0
-                            && totalItemCount >= PAGE_SIZE) {
-                        fetchAlerts();
-                    }
-                }
-            }
+        adapter.addLoadStateListener(loadStates -> {
+            boolean isLoading = loadStates.getRefresh() instanceof LoadState.Loading;
+            if (progressBar != null) progressBar.setVisibility(isLoading ? View.VISIBLE : View.GONE);
+            
+            boolean isEmpty = loadStates.getRefresh() instanceof LoadState.NotLoading && adapter.getItemCount() == 0;
+            if (emptyState != null) emptyState.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
+            
+            return null;
         });
 
-        fetchAlerts();
+        loadAlerts();
+        
+        // Trigger a sync
+        viewModel.syncAlerts(1, 20);
 
         return view;
     }
 
+    private void loadAlerts() {
+        disposables.add(viewModel.getAlertsPaging()
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(pagingData -> adapter.submitData(getLifecycle(), pagingData)));
+    }
+
     private void showAlertDetails(Alert alert) {
         View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_alert_details, null);
-        AlertDialog dialog = new AlertDialog.Builder(getContext(), R.style.CustomDialogTheme)
+        AlertDialog dialog = new MaterialAlertDialogBuilder(requireContext())
                 .setView(dialogView)
                 .create();
 
@@ -95,6 +94,7 @@ public class AlertsFragment extends Fragment {
         TextView tvMessage = dialogView.findViewById(R.id.tv_alert_detail_message);
         TextView tvTime = dialogView.findViewById(R.id.tv_alert_detail_time);
         MaterialButton btnMarkRead = dialogView.findViewById(R.id.btn_mark_read);
+        MaterialButton btnViewTicket = dialogView.findViewById(R.id.btn_view_ticket);
         MaterialButton btnClose = dialogView.findViewById(R.id.btn_close_dialog);
 
         tvTitle.setText(alert.getTitle());
@@ -105,71 +105,30 @@ public class AlertsFragment extends Fragment {
             btnMarkRead.setVisibility(View.GONE);
         } else {
             btnMarkRead.setOnClickListener(v -> {
-                markAlertRead(alert.getId());
+                viewModel.markAsRead(alert.getId());
                 dialog.dismiss();
             });
         }
 
-        btnClose.setOnClickListener(v -> dialog.dismiss());
+        if (alert.getTicketId() != null && !alert.getTicketId().isEmpty()) {
+            btnViewTicket.setVisibility(View.VISIBLE);
+            btnViewTicket.setOnClickListener(v -> {
+                Intent intent = new Intent(getContext(), TicketDetailsActivity.class);
+                intent.putExtra("ticket_id", alert.getTicketId());
+                startActivity(intent);
+                dialog.dismiss();
+            });
+        } else {
+            btnViewTicket.setVisibility(View.GONE);
+        }
 
+        btnClose.setOnClickListener(v -> dialog.dismiss());
         dialog.show();
     }
 
-    private void fetchAlerts() {
-        isLoading = true;
-        if (progressBar != null) progressBar.setVisibility(View.VISIBLE);
-
-        apiService.getAlerts(currentPage, PAGE_SIZE).enqueue(new Callback<ApiResponse<List<Alert>>>() {
-            @Override
-            public void onResponse(Call<ApiResponse<List<Alert>>> call, Response<ApiResponse<List<Alert>>> response) {
-                isLoading = false;
-                if (progressBar != null) progressBar.setVisibility(View.GONE);
-
-                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
-                    List<Alert> newData = response.body().getData();
-                    if (newData != null) {
-                        if (currentPage == 1) {
-                            alertsList.clear();
-                        }
-                        alertsList.addAll(newData);
-                        adapter.notifyDataSetChanged();
-                        
-                        if (newData.size() < PAGE_SIZE) {
-                            isLastPage = true;
-                        } else {
-                            currentPage++;
-                        }
-                    }
-                } else {
-                    Toast.makeText(getContext(), "Failed to load alerts", Toast.LENGTH_SHORT).show();
-                }
-            }
-
-            @Override
-            public void onFailure(Call<ApiResponse<List<Alert>>> call, Throwable t) {
-                isLoading = false;
-                if (progressBar != null) progressBar.setVisibility(View.GONE);
-                Log.e("AlertsFragment", "Error: " + t.getMessage());
-                Toast.makeText(getContext(), "Network Error", Toast.LENGTH_SHORT).show();
-            }
-        });
-    }
-
-    private void markAlertRead(int id) {
-        apiService.markAlertRead(id).enqueue(new Callback<ApiResponse<Map<String, String>>>() {
-            @Override
-            public void onResponse(Call<ApiResponse<Map<String, String>>> call, Response<ApiResponse<Map<String, String>>> response) {
-                if (response.isSuccessful()) {
-                    currentPage = 1;
-                    isLastPage = false;
-                    fetchAlerts();
-                }
-            }
-
-            @Override
-            public void onFailure(Call<ApiResponse<Map<String, String>>> call, Throwable t) {
-                Log.e("AlertsFragment", "Error marking read: " + t.getMessage());
-            }
-        });
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        disposables.dispose();
     }
 }

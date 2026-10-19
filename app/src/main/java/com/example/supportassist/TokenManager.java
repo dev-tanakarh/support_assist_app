@@ -11,6 +11,8 @@ public class TokenManager {
     private static final String KEY_USER_NAME = "userName";
     private static final String KEY_USER_EMAIL = "userEmail";
     private static final String KEY_USER_TYPE = "userType";
+    private static final String KEY_USER_AVATAR = "userAvatar";
+    private static final String KEY_USER_AVATAR_THUMB = "userAvatarThumb";
 
     private SharedPreferences prefs;
 
@@ -32,7 +34,22 @@ public class TokenManager {
                 .putString(KEY_USER_NAME, user.getName())
                 .putString(KEY_USER_EMAIL, user.getEmail())
                 .putString(KEY_USER_TYPE, user.getUserType())
+                .putString(KEY_USER_AVATAR, user.getProfileImageUrl())
+                .putString(KEY_USER_AVATAR_THUMB, user.getAvatarThumbnailUrl())
                 .apply();
+    }
+
+    public User getUser() {
+        String id = getUserId();
+        if (id == null) return null;
+        User user = new User();
+        user.setId(id);
+        user.setName(getUserName());
+        user.setEmail(getUserEmail());
+        user.setUserType(getUserType());
+        user.setProfileImageUrl(prefs.getString(KEY_USER_AVATAR, null));
+        user.setAvatarThumbnailUrl(prefs.getString(KEY_USER_AVATAR_THUMB, null));
+        return user;
     }
 
     public String getAccessToken() {
@@ -49,6 +66,10 @@ public class TokenManager {
 
     public String getUserName() {
         return prefs.getString(KEY_USER_NAME, null);
+    }
+
+    public String getUserEmail() {
+        return prefs.getString(KEY_USER_EMAIL, null);
     }
 
     public String getUserType() {

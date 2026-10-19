@@ -18,7 +18,7 @@ val localProperties = Properties().apply {
     val file = rootProject.file("local.properties")
     if (file.exists()) load(FileInputStream(file))
 }
-val apiBaseUrl = localProperties.getProperty("API_BASE_URL") ?: "http://10.0.2.2:8080/api/"
+val apiBaseUrl = localProperties.getProperty("API_BASE_URL") ?: "http://192.168.18.10:8080/api/"
 
 android {
     namespace = "com.example.supportassist"
@@ -79,6 +79,7 @@ dependencies {
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     implementation(libs.room.paging)
+    implementation(libs.room.rxjava3)
     ksp(libs.room.compiler)
 
     // Lifecycle

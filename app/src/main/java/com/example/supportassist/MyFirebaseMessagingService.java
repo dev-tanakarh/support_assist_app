@@ -24,16 +24,26 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
     @Override
     public void onMessageReceived(@NonNull RemoteMessage remoteMessage) {
+        String title = null;
+        String message = null;
+        String ticketId = null;
+
         if (remoteMessage.getNotification() != null) {
-            showNotification(remoteMessage.getNotification().getTitle(), remoteMessage.getNotification().getBody());
-        } else if (remoteMessage.getData().size() > 0) {
-            String title = remoteMessage.getData().get("title");
-            String message = remoteMessage.getData().get("message");
-            if (title != null && message != null) {
-                showNotification(title, message);
-            }
+            title = remoteMessage.getNotification().getTitle();
+            message = remoteMessage.getNotification().getBody();
         }
-        // Also trigger silent data sync when notification arrives
+        
+        if (remoteMessage.getData().size() > 0) {
+            if (title == null) title = remoteMessage.getData().get("title");
+            if (message == null) message = remoteMessage.getData().get("message");
+            ticketId = remoteMessage.getData().get("ticket_id");
+        }
+
+        if (title != null && message != null) {
+            showNotification(title, message, ticketId);
+        }
+        
+        // Refresh local cache silently when a notification arrives to ensure UI is fresh
         DataRepository.getInstance(this).syncDataSilently();
     }
 
@@ -45,7 +55,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         }
     }
 
-    private void showNotification(String title, String message) {
+    private void showNotification(String title, String message, String ticketId) {
         String channelId = "ticket_updates";
         NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 
@@ -58,9 +68,20 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             notificationManager.createNotificationChannel(channel);
         }
 
-        Intent intent = new Intent(this, MainActivity.class);
+        Intent intent;
+        if (ticketId != null && !ticketId.isEmpty()) {
+            // Stage 7: Direct navigation to ticket details
+            intent = new Intent(this, TicketDetailsActivity.class);
+            intent.putExtra("ticket_id", ticketId);
+            // Default to trying unassigned access if user is staff, 
+            // the Activity's self-healing logic will handle the rest.
+            intent.putExtra("is_unassigned", tokenManager.isTechnician() || tokenManager.isAdmin());
+        } else {
+            intent = new Intent(this, MainActivity.class);
+        }
+        
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, 
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, (int) System.currentTimeMillis(), intent,
                 PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE);
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, channelId)

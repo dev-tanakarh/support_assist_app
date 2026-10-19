@@ -1,19 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string-array name="status_filter_labels">
-        <item>All</item>
+        <item>All Statuses</item>
         <item>Open</item>
         <item>In Progress</item>
         <item>Resolved</item>
         <item>Closed</item>
     </string-array>
-    <!-- Index-matched to status_filter_labels above; empty string = no filter (send null) -->
     <string-array name="status_filter_values">
         <item></item>
         <item>OPEN</item>
         <item>IN_PROGRESS</item>
         <item>RESOLVED</item>
         <item>CLOSED</item>
+    </string-array>
+
+    <string-array name="priority_filter_labels">
+        <item>All Priorities</item>
+        <item>High</item>
+        <item>Medium</item>
+        <item>Low</item>
+    </string-array>
+    <string-array name="priority_filter_values">
+        <item></item>
+        <item>HIGH</item>
+        <item>MEDIUM</item>
+        <item>LOW</item>
     </string-array>
 
     <string-array name="user_type_filter_labels">

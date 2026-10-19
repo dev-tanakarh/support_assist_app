@@ -15,21 +15,20 @@ import androidx.recyclerview.widget.RecyclerView;
 import android.widget.ProgressBar;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.model.GlideUrl;
-import com.bumptech.glide.load.model.LazyHeaders;
 import com.example.supportassist.viewmodel.TicketViewModel;
 import java.util.ArrayList;
 import java.util.List;
 import javax.inject.Inject;
 import dagger.hilt.android.AndroidEntryPoint;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.disposables.CompositeDisposable;
 
 @AndroidEntryPoint
 public class HomeFragment extends Fragment {
 
     @Inject ApiService apiService;
     @Inject TokenManager tokenManager;
+    @Inject DataRepository dataRepository;
 
     private RecyclerView rvRecentTickets;
     private TicketAdapter adapter;
@@ -39,6 +38,7 @@ public class HomeFragment extends Fragment {
     private ImageView ivProfileImage;
     private TextView tvStatOpen, tvStatInProgress, tvStatResolved;
     private TicketViewModel viewModel;
+    private final CompositeDisposable disposables = new CompositeDisposable();
 
     @Nullable
     @Override
@@ -60,12 +60,13 @@ public class HomeFragment extends Fragment {
         rvRecentTickets.setAdapter(adapter);
 
         String name = tokenManager.getUserName();
-        if (name == null || name.isEmpty()) name = "User";
-        tvGreeting.setText(getString(R.string.hi_user, name));
+        tvGreeting.setText(getString(R.string.hi_user, name != null ? name : "User"));
 
         loadProfileImage();
         observeViewModel();
-        loadStats();
+        
+        // Initial sync of recent tickets (lazy loading from network to cache)
+        viewModel.refreshRecentTickets();
 
         view.findViewById(R.id.tv_see_all).setOnClickListener(v -> {
             if (getActivity() instanceof MainActivity) {
@@ -77,15 +78,13 @@ public class HomeFragment extends Fragment {
     }
 
     private void loadProfileImage() {
-        User user = DataRepository.getInstance(requireContext()).getCachedProfile();
+        User user = dataRepository.getCachedProfile();
         if (user != null) {
-            String imageUrl = ApiClient.getFullImageUrl(user.getProfileImageUrl());
-            if (imageUrl != null) {
-                String token = tokenManager.getAccessToken();
-                GlideUrl glideUrl = new GlideUrl(imageUrl, new LazyHeaders.Builder()
-                        .addHeader("Authorization", "Bearer " + token)
-                        .build());
-
+            String avatarPath = user.getAvatarThumbnailUrl();
+            if (avatarPath == null || avatarPath.isEmpty()) avatarPath = user.getProfileImageUrl();
+            
+            if (avatarPath != null) {
+                GlideUrl glideUrl = ApiClient.getAuthenticatedGlideUrl(avatarPath, tokenManager.getAccessToken());
                 Glide.with(this)
                         .load(glideUrl)
                         .placeholder(R.drawable.ic_profile)
@@ -97,45 +96,42 @@ public class HomeFragment extends Fragment {
     }
 
     private void observeViewModel() {
-        viewModel.recentTickets.observe(getViewLifecycleOwner(), tickets -> {
-            recentTicketsList.clear();
-            if (tickets != null) {
-                for (int i = 0; i < Math.min(tickets.size(), 3); i++) {
-                    recentTicketsList.add(tickets.get(i));
-                }
-            }
-            adapter.notifyDataSetChanged();
-        });
+        // Reactive caching: Home screen updates immediately when the database changes
+        disposables.add(viewModel.getRecentTickets()
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(tickets -> {
+                    recentTicketsList.clear();
+                    if (tickets != null) {
+                        for (int i = 0; i < Math.min(tickets.size(), 4); i++) {
+                            recentTicketsList.add(tickets.get(i));
+                        }
+                        updateStatsUI(tickets);
+                    }
+                    adapter.notifyDataSetChanged();
+                }, throwable -> {}));
 
         viewModel.loading.observe(getViewLifecycleOwner(), isLoading -> {
             if (progressBar != null) progressBar.setVisibility(isLoading ? View.VISIBLE : View.GONE);
         });
     }
 
-    private void loadStats() {
-        apiService.getTicketsList(null, null, null, 1, 100).enqueue(new Callback<ApiResponse<TicketsResponse>>() {
-            @Override
-            public void onResponse(Call<ApiResponse<TicketsResponse>> call, Response<ApiResponse<TicketsResponse>> response) {
-                if (!isAdded() || response.body() == null || !response.body().isSuccess()) return;
-                List<Ticket> tickets = response.body().getData().getTickets();
-                int open = 0, inProgress = 0, resolved = 0;
-                if (tickets != null) {
-                    for (Ticket t : tickets) {
-                        String status = t.getStatus();
-                        if (status == null) continue;
-                        if (status.equalsIgnoreCase("OPEN")) open++;
-                        else if (status.equalsIgnoreCase("IN_PROGRESS")) inProgress++;
-                        else if (status.equalsIgnoreCase("RESOLVED") || status.equalsIgnoreCase("CLOSED")) resolved++;
-                    }
-                }
-                tvStatOpen.setText(String.valueOf(open));
-                tvStatInProgress.setText(String.valueOf(inProgress));
-                tvStatResolved.setText(String.valueOf(resolved));
-            }
+    private void updateStatsUI(List<Ticket> allTickets) {
+        int open = 0, inProgress = 0, resolved = 0;
+        for (Ticket t : allTickets) {
+            String status = t.getStatus();
+            if (status == null) continue;
+            if (status.equalsIgnoreCase("OPEN")) open++;
+            else if (status.equalsIgnoreCase("IN_PROGRESS")) inProgress++;
+            else if (status.equalsIgnoreCase("RESOLVED") || status.equalsIgnoreCase("CLOSED")) resolved++;
+        }
+        tvStatOpen.setText(String.valueOf(open));
+        tvStatInProgress.setText(String.valueOf(inProgress));
+        tvStatResolved.setText(String.valueOf(resolved));
+    }
 
-            @Override
-            public void onFailure(Call<ApiResponse<TicketsResponse>> call, Throwable t) {
-            }
-        });
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        disposables.dispose();
     }
 }

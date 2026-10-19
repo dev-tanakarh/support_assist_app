@@ -14,13 +14,25 @@
         android:layout_height="wrap_content"
         android:padding="16dp">
 
+        <View
+            android:id="@+id/view_overdue_indicator"
+            android:layout_width="4dp"
+            android:layout_height="0dp"
+            android:background="#EF4444"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:visibility="visible" />
+
         <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/iv_ticket_thumbnail"
             android:layout_width="64dp"
             android:layout_height="64dp"
+            android:layout_marginStart="8dp"
             android:scaleType="centerCrop"
             android:visibility="gone"
-            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintStart_toEndOf="@id/view_overdue_indicator"
             app:layout_constraintTop_toTopOf="parent"
             app:shapeAppearanceOverlay="@style/RoundedImage"
             tools:src="@tools:sample/avatars"
@@ -33,7 +45,7 @@
             android:layout_marginStart="12dp"
             android:textColor="@color/text_grey"
             android:textSize="12sp"
-            app:layout_goneMarginStart="0dp"
+            app:layout_goneMarginStart="12dp"
             app:layout_constraintStart_toEndOf="@+id/iv_ticket_thumbnail"
             app:layout_constraintTop_toTopOf="parent"
             tools:text="#TKT-2025-0152" />
@@ -91,6 +103,19 @@
             app:layout_constraintStart_toEndOf="@+id/tv_status"
             app:layout_constraintTop_toTopOf="@+id/tv_status"
             tools:text="• 10 mins ago" />
+
+        <TextView
+            android:id="@+id/tv_due_date"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_grey"
+            android:textSize="11sp"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="@+id/tv_status"
+            app:layout_constraintBottom_toBottomOf="@+id/tv_status"
+            tools:text="Due: 2025-08-05"
+            tools:visibility="visible" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </androidx.cardview.widget.CardView>

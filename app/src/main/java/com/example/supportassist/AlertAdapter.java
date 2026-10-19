@@ -8,21 +8,35 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
+import androidx.paging.PagingDataAdapter;
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
-import java.util.List;
 
-public class AlertAdapter extends RecyclerView.Adapter<AlertAdapter.AlertViewHolder> {
+public class AlertAdapter extends PagingDataAdapter<Alert, AlertAdapter.AlertViewHolder> {
 
-    private List<Alert> alerts;
     private OnAlertClickListener listener;
 
     public interface OnAlertClickListener {
         void onAlertClick(Alert alert, int position);
     }
 
-    public AlertAdapter(List<Alert> alerts) {
-        this.alerts = alerts;
+    public AlertAdapter() {
+        super(DIFF_CALLBACK);
     }
+
+    private static final DiffUtil.ItemCallback<Alert> DIFF_CALLBACK = new DiffUtil.ItemCallback<Alert>() {
+        @Override
+        public boolean areItemsTheSame(@NonNull Alert oldItem, @NonNull Alert newItem) {
+            return oldItem.getId() == newItem.getId();
+        }
+
+        @Override
+        public boolean areContentsTheSame(@NonNull Alert oldItem, @NonNull Alert newItem) {
+            return oldItem.isRead() == newItem.isRead() && 
+                   oldItem.getTitle().equals(newItem.getTitle()) &&
+                   oldItem.getTimeAgo().equals(newItem.getTimeAgo());
+        }
+    };
 
     public void setOnAlertClickListener(OnAlertClickListener listener) {
         this.listener = listener;
@@ -37,33 +51,10 @@ public class AlertAdapter extends RecyclerView.Adapter<AlertAdapter.AlertViewHol
 
     @Override
     public void onBindViewHolder(@NonNull AlertViewHolder holder, int position) {
-        Alert alert = alerts.get(position);
-        holder.tvTitle.setText(alert.getTitle());
-        holder.tvTime.setText(alert.getTime());
-        holder.ivIcon.setImageResource(alert.getIconRes());
-        
-        // Use the background view for the color circle as defined in item_alert.xml
-        holder.vIconBg.setBackgroundTintList(ColorStateList.valueOf(alert.getIconBgColor()));
-
-        // Visual distinction for read/unread alerts
-        if (alert.isRead()) {
-            holder.tvTitle.setAlpha(0.6f);
-            holder.tvTitle.setTypeface(null, Typeface.NORMAL);
-        } else {
-            holder.tvTitle.setAlpha(1.0f);
-            holder.tvTitle.setTypeface(null, Typeface.BOLD);
+        Alert alert = getItem(position);
+        if (alert != null) {
+            holder.bind(alert, position, listener);
         }
-
-        holder.itemView.setOnClickListener(v -> {
-            if (listener != null) {
-                listener.onAlertClick(alert, position);
-            }
-        });
-    }
-
-    @Override
-    public int getItemCount() {
-        return alerts.size();
     }
 
     public static class AlertViewHolder extends RecyclerView.ViewHolder {
@@ -77,6 +68,28 @@ public class AlertAdapter extends RecyclerView.Adapter<AlertAdapter.AlertViewHol
             tvTime = itemView.findViewById(R.id.tv_alert_time);
             ivIcon = itemView.findViewById(R.id.iv_alert_icon);
             vIconBg = itemView.findViewById(R.id.v_icon_bg);
+        }
+
+        public void bind(Alert alert, int position, OnAlertClickListener listener) {
+            tvTitle.setText(alert.getTitle());
+            tvTime.setText(alert.getTime());
+            ivIcon.setImageResource(alert.getIconRes());
+            
+            vIconBg.setBackgroundTintList(ColorStateList.valueOf(alert.getIconBgColor()));
+
+            if (alert.isRead()) {
+                tvTitle.setAlpha(0.6f);
+                tvTitle.setTypeface(null, Typeface.NORMAL);
+            } else {
+                tvTitle.setAlpha(1.0f);
+                tvTitle.setTypeface(null, Typeface.BOLD);
+            }
+
+            itemView.setOnClickListener(v -> {
+                if (listener != null) {
+                    listener.onAlertClick(alert, position);
+                }
+            });
         }
     }
 }

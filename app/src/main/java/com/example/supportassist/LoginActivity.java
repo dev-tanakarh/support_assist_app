@@ -22,7 +22,11 @@ import retrofit2.Response;
 public class LoginActivity extends AppCompatActivity {
 
     private static final String TAG = "LoginActivity";
+    
     @Inject TokenManager tokenManager;
+    @Inject WebSocketManager webSocketManager;
+    @Inject UserRepository userRepository;
+    
     private ApiService apiService;
     private ProgressBar progressBar;
     private Button loginBtn;
@@ -36,7 +40,6 @@ public class LoginActivity extends AppCompatActivity {
         progressBar = findViewById(R.id.pb_login);
         loginBtn = findViewById(R.id.btn_login);
 
-        // 5. Modern UI: Biometric Authentication
         if (tokenManager.getAccessToken() != null) {
             if (BiometricHelper.isBiometricAvailable(this)) {
                 BiometricHelper.showBiometricPrompt(this, new BiometricHelper.BiometricCallback() {
@@ -48,7 +51,6 @@ public class LoginActivity extends AppCompatActivity {
                     @Override
                     public void onAuthenticationError(String error) {
                         Toast.makeText(LoginActivity.this, "Biometric failed: " + error, Toast.LENGTH_SHORT).show();
-                        // Stay on login screen to allow password entry
                     }
                 });
             } else {
@@ -101,7 +103,12 @@ public class LoginActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                     LoginResponse data = response.body().getData();
                     tokenManager.saveTokens(data.getAccessToken(), data.getRefreshToken());
-                    tokenManager.saveUser(data.getUser());
+                    
+                    // Unified save method ensures data is available in all cache layers (Prefs + Room)
+                    userRepository.saveProfileLocally(data.getUser());
+                    
+                    // Real-time Update: Initiate connection immediately on login
+                    webSocketManager.connect(data.getAccessToken());
                     
                     Toast.makeText(LoginActivity.this, "Login Successful!", Toast.LENGTH_SHORT).show();
                     navigateToMain();
